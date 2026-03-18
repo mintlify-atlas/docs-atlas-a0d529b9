@@ -1,0 +1,132 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Asciidoctor",
+  "projectDescription": "A fast, open source Ruby-based text processor and publishing toolchain for converting AsciiDoc content to HTML 5, DocBook 5, man pages, and other formats.",
+  "theme": "maple",
+  "primaryColor": "#df0949",
+  "lightColor": "#f378a5",
+  "darkColor": "#0f77b4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "install",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Using Asciidoctor",
+            "pages": [
+              "cli/usage",
+              "cli/options",
+              "api/usage",
+              "api/options",
+              "safe-modes"
+            ]
+          },
+          {
+            "group": "Converters",
+            "pages": [
+              "converters/overview",
+              "converters/html5",
+              "converters/docbook5",
+              "converters/manpage"
+            ]
+          },
+          {
+            "group": "Extensions",
+            "pages": [
+              "extensions/overview",
+              "extensions/preprocessor",
+              "extensions/block-processor",
+              "extensions/inline-macro-processor",
+              "extensions/tree-processor",
+              "extensions/postprocessor"
+            ]
+          },
+          {
+            "group": "Syntax Highlighting",
+            "pages": [
+              "syntax-highlighting/overview",
+              "syntax-highlighting/rouge",
+              "syntax-highlighting/highlight-js",
+              "syntax-highlighting/pygments"
+            ]
+          },
+          {
+            "group": "Migration",
+            "pages": [
+              "migrate/asciidoc-py",
+              "migrate/upgrade"
+            ]
+          },
+          {
+            "group": "Tooling & Ecosystem",
+            "pages": [
+              "tooling/overview",
+              "tooling/asciidoctorj",
+              "tooling/asciidoctorjs"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api/reference/module",
+              "api/reference/document",
+              "api/reference/section",
+              "api/reference/block",
+              "api/reference/inline"
+            ]
+          },
+          {
+            "group": "Extensions API",
+            "pages": [
+              "api/reference/extensions-registry",
+              "api/reference/processor",
+              "api/reference/converter"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Converts AsciiDoc source to HTML 5, DocBook 5, and man page formats",
+    "Extensible via a rich extension API (preprocessors, block processors, inline macro processors, etc.)",
+    "CLI tool (asciidoctor command) and Ruby API for programmatic use",
+    "Built-in syntax highlighting via Rouge, highlight.js, and Pygments",
+    "Custom converter support via Tilt-supported templates",
+    "Multiple safe modes (unsafe, safe, server, secure) for controlled environments",
+    "Runs on CRuby, JRuby, and TruffleRuby; also available as AsciidoctorJ (JVM) and Asciidoctor.js",
+    "Default stylesheet with Font Awesome icons and MathJax STEM support"
+  ],
+  "publicApiSurface": [
+    "Asciidoctor.convert(input, options)",
+    "Asciidoctor.convert_file(filename, options)",
+    "Asciidoctor.load(input, options)",
+    "Asciidoctor.load_file(filename, options)",
+    "Asciidoctor::Extensions.register(name, &block)",
+    "Asciidoctor::Extensions::Preprocessor",
+    "Asciidoctor::Extensions::BlockProcessor",
+    "Asciidoctor::Extensions::BlockMacroProcessor",
+    "Asciidoctor::Extensions::InlineMacroProcessor",
+    "Asciidoctor::Extensions::TreeProcessor",
+    "Asciidoctor::Extensions::Postprocessor",
+    "Asciidoctor::Extensions::IncludeProcessor",
+    "Asciidoctor::Converter",
+    "Asciidoctor::Document",
+    "Asciidoctor::SafeMode",
+    "Asciidoctor::Compliance",
+    "asciidoctor CLI (bin/asciidoctor)"
+  ]
+}
