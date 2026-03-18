@@ -1,97 +1,88 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Asciidoctor"
+description: "A fast, open source text processor and publishing toolchain for converting AsciiDoc content to HTML 5, DocBook 5, man pages, and other formats."
 ---
 
-## Setting up
+Asciidoctor is a fast, open source, Ruby-based text processor for parsing AsciiDoc® content and converting it to HTML 5, DocBook 5, manual pages, PDF, EPUB 3, and other formats.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Install Asciidoctor" icon="download" href="/install">
+    Get up and running with gem, Homebrew, Docker, or your system package manager.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Convert your first AsciiDoc document to HTML in under 5 minutes.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="CLI reference" icon="terminal" href="/cli/usage">
+    Use the `asciidoctor` command to convert documents from your terminal.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Ruby API" icon="code" href="/api/usage">
+    Integrate Asciidoctor into your Ruby application programmatically.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What is AsciiDoc?
 
-Everything you need to create world-class documentation.
+AsciiDoc is a lightweight, semantic markup language for writing technical content — articles, books, man pages, and more. It is readable in raw form and converts to polished, publication-ready output.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+Asciidoctor is the processor: it reads the AsciiDoc source and converts it to your target format.
 
-## Need inspiration?
+```asciidoc
+= My Document
+Author Name <author@example.com>
+:toc:
+:source-highlighter: rouge
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+== Introduction
+
+This is a paragraph with *bold*, _italic_, and `monospace` text.
+
+== Code example
+
+[source,ruby]
+----
+require 'asciidoctor'
+
+html = Asciidoctor.convert "Hello, *World*!", safe: :safe
+puts html
+----
+```
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Multiple output formats" icon="file-export">
+    Convert to HTML 5, DocBook 5, and man pages out of the box. PDF, EPUB 3, and more via extensions.
+  </Card>
+  <Card title="Extension API" icon="puzzle-piece">
+    Add custom block types, inline macros, preprocessors, and postprocessors using the Ruby extension API.
+  </Card>
+  <Card title="CLI and Ruby API" icon="terminal">
+    Use from the command line or integrate directly into Ruby applications, Rails, GitHub, and GitLab.
+  </Card>
+  <Card title="Syntax highlighting" icon="highlighter">
+    Built-in integrations with Rouge, highlight.js, and Pygments for beautiful source code rendering.
+  </Card>
+  <Card title="Safe modes" icon="shield">
+    Fine-grained security controls for server deployments: unsafe, safe, server, and secure.
+  </Card>
+  <Card title="Cross-platform" icon="globe">
+    Runs on CRuby, JRuby, and TruffleRuby. Also available as AsciidoctorJ (JVM) and Asciidoctor.js.
+  </Card>
+</CardGroup>
+
+## Explore the docs
+
+<CardGroup cols={2}>
+  <Card title="Converters" icon="arrows-turn-to-dots" href="/converters/overview">
+    Learn about the built-in HTML 5, DocBook 5, and man page converters.
+  </Card>
+  <Card title="Extensions" icon="plug" href="/extensions/overview">
+    Extend Asciidoctor with preprocessors, block processors, tree processors, and more.
+  </Card>
+  <Card title="Syntax highlighting" icon="paintbrush" href="/syntax-highlighting/overview">
+    Enable source code highlighting with Rouge, highlight.js, or Pygments.
+  </Card>
+  <Card title="API reference" icon="book" href="/api/reference/module">
+    Full reference for the `Asciidoctor` module and document model classes.
+  </Card>
+</CardGroup>

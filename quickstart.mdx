@@ -108,7 +108,7 @@ This guide walks you from a fresh Asciidoctor installation to a working HTML con
 
     ```ruby
     content = '_Zen_ in the art of writing https://asciidoctor.org[AsciiDoc].'
-    html = Asciidoctor.convert content, header_footer: true, safe: :safe
+    html = Asciidoctor.convert content, standalone: true, safe: :safe
     puts html
     # => Full HTML document including <html>, <head>, and <body> tags
     ```
@@ -126,7 +126,7 @@ This guide walks you from a fresh Asciidoctor installation to a working HTML con
 
     ```ruby
     content = '_Zen_ in the art of writing https://asciidoctor.org[AsciiDoc].'
-    doc = Asciidoctor.load content, header_footer: true, safe: :safe
+    doc = Asciidoctor.load content, standalone: true, safe: :safe
     puts doc.doctitle   # => nil (no title declared in this string)
     html = doc.convert
     ```
@@ -140,13 +140,13 @@ This guide walks you from a fresh Asciidoctor installation to a working HTML con
 ## Next steps
 
 <CardGroup cols={3}>
-  <Card title="CLI options" icon="terminal" href="https://docs.asciidoctor.org/asciidoctor/latest/cli/options/">
+  <Card title="CLI options" icon="terminal" href="/cli/options">
     Full reference for all `asciidoctor` command-line flags and switches.
   </Card>
-  <Card title="Ruby API" icon="code" href="https://docs.asciidoctor.org/asciidoctor/latest/api/">
+  <Card title="Ruby API" icon="code" href="/api/usage">
     In-depth guide to using Asciidoctor programmatically from Ruby.
   </Card>
-  <Card title="Safe modes" icon="shield" href="https://docs.asciidoctor.org/asciidoctor/latest/safe-modes/">
+  <Card title="Safe modes" icon="shield" href="/safe-modes">
     Understand the four safe mode levels and when to use each one.
   </Card>
 </CardGroup>

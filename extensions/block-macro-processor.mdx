@@ -1,0 +1,150 @@
+---
+title: "Block macro processor"
+description: "Handle custom block-level macros of the form name::target[attrs] using the BlockMacroProcessor extension."
+---
+
+A `BlockMacroProcessor` handles custom **block macro** syntax. Block macros follow the form:
+
+```asciidoc
+name::target[attrs]
+```
+
+They appear on a line by themselves and produce a block-level node in the document. Block macros are distinct from [inline macros](/extensions/inline-macro-processor) (`name:target[attrs]`, single colon), which appear inline within paragraph text.
+
+## Processing signature
+
+```ruby
+def process(parent, target, attributes)
+```
+
+<ParamField path="parent" type="Asciidoctor::Block | Asciidoctor::Section | Asciidoctor::Document" required>
+  The parent block that will contain the generated node.
+</ParamField>
+
+<ParamField path="target" type="String" required>
+  The target string from the block macro call — for example, `chart.csv` from `chart::chart.csv[bar]`.
+</ParamField>
+
+<ParamField path="attributes" type="Hash" required>
+  Parsed attributes from the macro's attribute list. Positional attributes are available under numeric string keys (`'1'`, `'2'`, etc.).
+</ParamField>
+
+The `process` method must return an `Asciidoctor::Block` (or `nil` to produce no output).
+
+## Registration
+
+Register a `BlockMacroProcessor` by associating it with a macro name:
+
+```ruby
+Asciidoctor::Extensions.register do
+  block_macro MyBlockMacroProcessor, :myblock
+  # or, if the processor declares its name internally:
+  block_macro MyBlockMacroProcessor
+end
+```
+
+Use the DSL `named` method inside the processor class to set the name:
+
+```ruby
+class MyBlockMacroProcessor < Asciidoctor::Extensions::BlockMacroProcessor
+  use_dsl
+  named :chart
+end
+```
+
+## Class options (DSL)
+
+| DSL method | Key | Description |
+|------------|-----|-------------|
+| `named :name` | `:name` | The block macro name (required) |
+| `positional_attrs 'attr1', 'attr2'` | `:positional_attrs` | Names for positional attributes |
+| `default_attrs 'key' => 'value'` | `:default_attrs` | Default attribute values |
+| `resolve_attributes` / `parse_content_as` | `:content_model` | How the attribute list is parsed |
+
+## Creating output nodes
+
+Inside `process`, use the helper methods inherited from `Processor` to build block nodes:
+
+```ruby
+# Create a paragraph block
+create_paragraph parent, 'Content text', attrs
+
+# Create a generic block with a context
+create_block parent, :listing, 'source code', attrs
+
+# Create a pass block (raw passthrough content)
+create_pass_block parent, '<div class="custom">content</div>', attrs
+
+# Create an image block
+create_image_block parent, attrs.merge('target' => 'diagram.png', 'alt' => 'Diagram')
+```
+
+## Complete example
+
+The following processor handles a `gist::id[]` block macro that embeds a GitHub Gist as a listing block:
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class GistBlockMacro < Asciidoctor::Extensions::BlockMacroProcessor
+  use_dsl
+  named :gist
+  positional_attrs 'type'
+
+  def process parent, target, attrs
+    gist_url = "https://gist.github.com/#{target}.js"
+    html = %(<div class="gist"><script src="#{gist_url}"></script></div>)
+    create_pass_block parent, html, attrs, subs: nil
+  end
+end
+
+Asciidoctor::Extensions.register do
+  block_macro GistBlockMacro
+end
+```
+
+In an AsciiDoc document:
+
+```asciidoc
+gist::mojavelinux/5546622[ruby]
+```
+
+## Registering with a block
+
+You can also register inline using the DSL block form:
+
+```ruby
+Asciidoctor::Extensions.register do
+  block_macro do
+    named :youtube
+    positional_attrs 'width', 'height'
+
+    process do |parent, target, attrs|
+      width  = attrs['width']  || '640'
+      height = attrs['height'] || '360'
+      html = %(<iframe width="#{width}" height="#{height}" src="https://www.youtube.com/embed/#{target}"></iframe>)
+      create_pass_block parent, html, attrs, subs: nil
+    end
+  end
+end
+```
+
+Usage in a document:
+
+```asciidoc
+youtube::dQw4w9WgXcQ[640, 360]
+```
+
+## Difference from BlockProcessor
+
+| | `BlockProcessor` | `BlockMacroProcessor` |
+|---|---|---|
+| Syntax | `[name]` block delimiter | `name::target[attrs]` |
+| Content | Has a body with reader | Targetted, no body |
+| Position | Wraps existing content | Standalone line |
+
+## Related extensions
+
+- [Block processor](/extensions/block-processor) — handle custom delimited blocks with body content
+- [Inline macro processor](/extensions/inline-macro-processor) — handle inline `name:target[attrs]` macros

@@ -1,0 +1,192 @@
+---
+title: "Asciidoctor::Compliance"
+description: "Global compliance flags that control how closely Asciidoctor follows the original AsciiDoc specification."
+---
+
+`Asciidoctor::Compliance` is a module that exposes a set of named flags controlling how closely Asciidoctor adheres to the behavior of the original AsciiDoc Python processor (AsciiDoc.py). These flags affect all documents processed in the current Ruby process.
+
+Each compliance key is defined with a current Asciidoctor default and an annotation showing the AsciiDoc.py "compliance value" — the behavior the original processor exhibited.
+
+## Accessing compliance flags
+
+All flags are accessible as module-level attributes:
+
+```ruby
+# Read a compliance flag
+Asciidoctor::Compliance.markdown_syntax          # => true
+Asciidoctor::Compliance.attribute_missing        # => 'skip'
+
+# Change a compliance flag globally
+Asciidoctor::Compliance.markdown_syntax = false
+
+# List all compliance keys
+Asciidoctor::Compliance.keys
+# => #<Set: {:block_terminates_paragraph, :strict_verbatim_paragraphs, ...}>
+```
+
+## Compliance flags reference
+
+### `block_terminates_paragraph`
+
+**Default:** `true` | **AsciiDoc.py value:** `true`
+
+When `true`, a block delimiter or block attribute list immediately following a paragraph terminates that paragraph. Set to `false` to require a blank line between a paragraph and the following block element.
+
+```ruby
+Asciidoctor::Compliance.block_terminates_paragraph = true  # default
+```
+
+---
+
+### `strict_verbatim_paragraphs`
+
+**Default:** `true` | **AsciiDoc.py value:** `false`
+
+When `true`, paragraphs with a verbatim style (`literal`, `listing`, `source`, `verse`) are treated as verbatim content and their markup is not processed. Set to `false` to parse them as normal paragraphs.
+
+```ruby
+Asciidoctor::Compliance.strict_verbatim_paragraphs = true  # default
+```
+
+---
+
+### `underline_style_section_titles`
+
+**Default:** `true` | **AsciiDoc.py value:** `true`
+
+When `true`, Asciidoctor recognizes setext-style (underlined) section titles in addition to atx-style (prefix `=`) titles. Set to `false` to accept only atx-style titles.
+
+```asciidoc
+My Section
+----------
+```
+
+```ruby
+Asciidoctor::Compliance.underline_style_section_titles = false  # disable setext titles
+```
+
+---
+
+### `unwrap_standalone_preamble`
+
+**Default:** `true` | **AsciiDoc.py value:** `false`
+
+When `true`, if the document has a title but no sections, Asciidoctor unwraps the content from the preamble and discards the empty preamble wrapper. Set to `false` to always keep the preamble wrapper.
+
+```ruby
+Asciidoctor::Compliance.unwrap_standalone_preamble = true  # default
+```
+
+---
+
+### `attribute_missing`
+
+**Default:** `'skip'` | **AsciiDoc.py value:** `'drop-line'`
+
+Controls what happens when a document references an attribute that is not set. Accepted values:
+
+| Value | Behavior |
+|-------|----------|
+| `'skip'` | Leave the attribute reference as-is in the output (default) |
+| `'drop'` | Remove the attribute reference but keep the rest of the line |
+| `'drop-line'` | Drop the entire line containing the missing attribute (AsciiDoc.py behavior) |
+| `'warn'` | Log a warning and leave the reference as-is |
+
+```ruby
+Asciidoctor::Compliance.attribute_missing = 'drop-line'
+```
+
+This can also be overridden per-document using the `attribute-missing` document attribute:
+
+```asciidoc
+:attribute-missing: warn
+```
+
+---
+
+### `attribute_undefined`
+
+**Default:** `'drop-line'` | **AsciiDoc.py value:** `'drop-line'`
+
+Controls what happens when a document unsets an attribute using the `name!` syntax or `!name`. Accepted values:
+
+| Value | Behavior |
+|-------|----------|
+| `'drop'` | Remove the unset entry |
+| `'drop-line'` | Drop the line containing the unset directive (default) |
+
+```ruby
+Asciidoctor::Compliance.attribute_undefined = 'drop'
+```
+
+---
+
+### `shorthand_property_syntax`
+
+**Default:** `true` | **AsciiDoc.py value:** `false`
+
+When `true`, Asciidoctor recognizes shorthand syntax for block IDs, roles, and options:
+
+```asciidoc
+[#my-id.my-role%my-option]
+A paragraph with an ID, role, and option.
+```
+
+Set to `false` to require the long-form syntax only:
+
+```asciidoc
+[id="my-id",role="my-role",options="my-option"]
+```
+
+```ruby
+Asciidoctor::Compliance.shorthand_property_syntax = true  # default
+```
+
+---
+
+### `natural_xrefs`
+
+**Default:** `true` | **AsciiDoc.py value:** `false`
+
+When `true`, Asciidoctor resolves cross-references by matching the reference text against section titles and other node ref-text values (e.g., `<<Section Title>>`). Set to `false` to require explicit IDs only.
+
+```ruby
+Asciidoctor::Compliance.natural_xrefs = true  # default
+```
+
+---
+
+### `unique_id_start_index`
+
+**Default:** `2` | **AsciiDoc.py value:** `2`
+
+The integer suffix Asciidoctor starts from when generating a unique ID to resolve a conflict with an existing ID. For example, if `_my-section` is taken, the next attempt is `_my-section-2`, then `_my-section-3`, and so on.
+
+```ruby
+Asciidoctor::Compliance.unique_id_start_index = 2  # default
+```
+
+---
+
+### `markdown_syntax`
+
+**Default:** `true` | **AsciiDoc.py value:** `false`
+
+When `true`, Asciidoctor recognizes a subset of Markdown syntax that does not conflict with AsciiDoc. This includes Markdown-style headings (`#`, `##`, etc.) and fenced code blocks.
+
+```ruby
+Asciidoctor::Compliance.markdown_syntax = true   # default (recognizes some Markdown)
+Asciidoctor::Compliance.markdown_syntax = false  # strict AsciiDoc only
+```
+
+## Changing compliance per-document
+
+Some compliance behaviors can be overridden at the document level using document attributes. See [AsciiDoc language documentation](https://docs.asciidoctor.org/asciidoc/latest/) for the attribute names.
+
+## Thread safety
+
+Compliance flags are global to the Ruby process. If you need per-document compliance settings, use the appropriate document attributes instead of mutating the global flags.
+
+<Warning>
+  Changing `Asciidoctor::Compliance` flags affects all subsequent document processing in the process. In multi-threaded environments or when processing untrusted content, prefer document-level attributes.
+</Warning>

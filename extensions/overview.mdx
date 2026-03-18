@@ -41,11 +41,13 @@ You can register extensions globally so they apply to every document, or pass a 
     require 'asciidoctor/extensions'
 
     Asciidoctor::Extensions.register do
-      preprocessor  MyPreprocessor
-      tree_processor MyTreeProcessor
-      postprocessor MyPostprocessor
-      block         MyBlockProcessor
-      inline_macro  MyInlineMacroProcessor
+      preprocessor     MyPreprocessor
+      include_processor MyIncludeProcessor
+      tree_processor   MyTreeProcessor
+      postprocessor    MyPostprocessor
+      block            MyBlockProcessor
+      block_macro      MyBlockMacroProcessor
+      inline_macro     MyInlineMacroProcessor
     end
     ```
 
@@ -149,8 +151,14 @@ Asciidoctor::Extensions.unregister_all
   <Card title="Preprocessor" icon="file-lines" href="/extensions/preprocessor">
     Modify source lines before parsing.
   </Card>
+  <Card title="Include processor" icon="link" href="/extensions/include-processor">
+    Intercept `include::target[]` directives to serve content from custom sources.
+  </Card>
   <Card title="Block processor" icon="cube" href="/extensions/block-processor">
     Handle custom delimited blocks and paragraphs.
+  </Card>
+  <Card title="Block macro processor" icon="square-plus" href="/extensions/block-macro-processor">
+    Handle custom block-level macros of the form `name::target[attrs]`.
   </Card>
   <Card title="Inline macro processor" icon="code" href="/extensions/inline-macro-processor">
     Handle custom inline macros of the form `name:target[attrs]`.

@@ -59,7 +59,9 @@
             "pages": [
               "extensions/overview",
               "extensions/preprocessor",
+              "extensions/include-processor",
               "extensions/block-processor",
+              "extensions/block-macro-processor",
               "extensions/inline-macro-processor",
               "extensions/tree-processor",
               "extensions/postprocessor"
@@ -101,7 +103,8 @@
               "api/reference/document",
               "api/reference/section",
               "api/reference/block",
-              "api/reference/inline"
+              "api/reference/inline",
+              "api/reference/compliance"
             ]
           },
           {

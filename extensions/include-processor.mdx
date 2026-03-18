@@ -1,0 +1,136 @@
+---
+title: "Include processor"
+description: "Intercept and handle include::[] directives for custom targets using the IncludeProcessor extension."
+---
+
+An `IncludeProcessor` intercepts `include::target[]` directives before the parser resolves them. When a directive is encountered, Asciidoctor asks each registered `IncludeProcessor` whether it handles the given target. The first processor that claims the target is invoked to supply the content.
+
+Use an `IncludeProcessor` when you want to serve include content from a non-filesystem source — for example, a database, an HTTP endpoint, a version control system, or in-memory content.
+
+## Processing signature
+
+```ruby
+def process(document, reader, target, attributes)
+```
+
+<ParamField path="document" type="Asciidoctor::Document" required>
+  The document being parsed.
+</ParamField>
+
+<ParamField path="reader" type="Asciidoctor::Reader" required>
+  The reader currently processing source lines. Push content back with `reader.push_include`.
+</ParamField>
+
+<ParamField path="target" type="String" required>
+  The target string from the include directive — for example, `myfile.adoc` or `https://example.com/content`.
+</ParamField>
+
+<ParamField path="attributes" type="Hash" required>
+  Attributes from the include directive (e.g., `lines`, `tags`, `leveloffset`).
+</ParamField>
+
+## Claiming a target
+
+Override `handles?` to control which targets your processor claims. The default implementation returns `true` for every target.
+
+```ruby
+def handles?(doc, target)
+  # return true if this processor should handle the target
+  target.start_with? 'db://'
+end
+```
+
+<Note>
+  Only the first `IncludeProcessor` that returns `true` from `handles?` is invoked for a given target. Register more-specific processors first.
+</Note>
+
+## Pushing content
+
+Inside `process`, call `reader.push_include` to supply the replacement content:
+
+```ruby
+reader.push_include lines, target, target, 1, attributes
+```
+
+The signature is:
+```ruby
+reader.push_include(data, file, path, lineno, attributes)
+```
+
+| Argument | Description |
+|----------|-------------|
+| `data` | `String` or `Array<String>` — the content to include |
+| `file` | Filename to report in error messages (use `target` or a synthetic name) |
+| `path` | Path to display in source location (usually same as `file`) |
+| `lineno` | Starting line number (use `1`) |
+| `attributes` | Pass the original `attributes` hash through |
+
+## Registration
+
+```ruby
+Asciidoctor::Extensions.register do
+  include_processor MyIncludeProcessor
+end
+```
+
+Or with the DSL:
+
+```ruby
+Asciidoctor::Extensions.register do
+  include_processor do
+    handles? { |doc, target| target.start_with? 'db://' }
+
+    process do |doc, reader, target, attrs|
+      # fetch content from a database
+      id = target.delete_prefix 'db://'
+      content = Database.fetch(id)
+      reader.push_include content, target, target, 1, attrs
+    end
+  end
+end
+```
+
+## Complete example
+
+The following processor intercepts `include::http://[...]` directives and fetches the content from the URL.
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+require 'open-uri'
+
+class HttpIncludeProcessor < Asciidoctor::Extensions::IncludeProcessor
+  def handles? doc, target
+    target.start_with? 'http://', 'https://'
+  end
+
+  def process doc, reader, target, attrs
+    content = URI.open(target).read
+    reader.push_include content, target, target, 1, attrs
+  end
+end
+
+Asciidoctor::Extensions.register do
+  include_processor HttpIncludeProcessor
+end
+
+# In the document:
+#   include::https://example.com/snippet.adoc[]
+```
+
+<Warning>
+  The `include::[]` directive is disabled in `:secure` safe mode and restricted in `:safe` mode (only files within the source directory are accessible). Your `IncludeProcessor` can still override this behavior for claims it handles — but be careful when processing untrusted content.
+</Warning>
+
+## DSL options
+
+| Method | Description |
+|--------|-------------|
+| `handles? { \|doc, target\| ... }` | Block form of the `handles?` predicate |
+| `process { \|doc, reader, target, attrs\| ... }` | Block form of the `process` method |
+
+## Related extensions
+
+- [Preprocessor](/extensions/preprocessor) — modify raw source lines before parsing
+- [Block processor](/extensions/block-processor) — handle custom delimited blocks
+- [Tree processor](/extensions/tree-processor) — transform the AST after parsing
