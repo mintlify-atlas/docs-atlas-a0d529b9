@@ -1,0 +1,164 @@
+---
+title: "Safe Modes"
+description: "Understand Asciidoctor's four safe mode levels and how they control access to the file system and document features."
+---
+
+Asciidoctor has a security model built around four named **safe mode** levels. Each level progressively restricts what a document can do, protecting the server or user running the processor from potentially dangerous operations embedded in untrusted source content.
+
+<Warning>
+  When using the Ruby API, the default safe mode is **SECURE**. This disables the `include::[]` directive and other file-system operations. You must explicitly set a lower safe mode to enable those features.
+</Warning>
+
+## Safe mode levels
+
+| Level | Constant | Integer value | CLI default | API default |
+|-------|----------|--------------|-------------|-------------|
+| Unsafe | `SafeMode::UNSAFE` | `0` | Yes | No |
+| Safe | `SafeMode::SAFE` | `1` | | |
+| Server | `SafeMode::SERVER` | `10` | | |
+| Secure | `SafeMode::SECURE` | `20` | | Yes |
+
+## UNSAFE (0)
+
+`SafeMode::UNSAFE` disables all security restrictions. Asciidoctor does not impose any limits; Ruby itself is still subject to its own permissions.
+
+This is the **default when using the CLI**. It is appropriate for trusted local documents where you control the source content.
+
+```bash
+# CLI default — no flags needed
+asciidoctor document.adoc
+
+# Explicit
+asciidoctor -S unsafe document.adoc
+```
+
+```ruby
+# Ruby API
+Asciidoctor.convert_file 'document.adoc', safe: :unsafe, to_file: true
+```
+
+## SAFE (1)
+
+`SafeMode::SAFE` closely mirrors the behavior of the original AsciiDoc Python processor. It:
+
+- **Allows** the `include::[]` directive
+- **Prevents** includes from reading files outside the parent directory of the source file
+- **Disables** most other macros that could access the file system
+
+This is a good baseline for trusted content that may reference external files in a controlled directory tree.
+
+```bash
+# Short flag (compatibility alias)
+asciidoctor --safe document.adoc
+
+# Explicit safe-mode flag
+asciidoctor -S safe document.adoc
+```
+
+```ruby
+Asciidoctor.convert_file 'document.adoc', safe: :safe, to_file: true
+```
+
+## SERVER (10)
+
+`SafeMode::SERVER` adds the restrictions of `SAFE` and additionally **prevents the document from changing attributes that affect conversion**, such as the backend or source highlighter.
+
+Specifically, it disallows setting the following from within the document header:
+
+- `backend`
+- `source-highlighter`
+- Other attributes that control converter behavior
+
+This level is recommended for **server-side deployments** where you want to permit include directives but prevent documents from hijacking the output format or converter configuration.
+
+```bash
+asciidoctor -S server document.adoc
+```
+
+```ruby
+Asciidoctor.convert_file 'document.adoc', safe: :server, to_file: true
+```
+
+## SECURE (20)
+
+`SafeMode::SECURE` is the most restrictive active level. In addition to all `SERVER` restrictions, it:
+
+- **Disables** the `include::[]` directive
+- **Prevents** reading any files from the file system (stylesheets, images referenced by data URIs, etc.)
+- **Prevents** embedding binary content referenced in the document
+
+Asciidoctor and trusted extensions may still embed pre-approved content into the output.
+
+This is the **default when using the Ruby API** and is the recommended setting for processing untrusted user-submitted content.
+
+```bash
+asciidoctor -S secure document.adoc
+```
+
+```ruby
+# API default — you do not need to specify it explicitly,
+# but doing so is recommended for clarity
+Asciidoctor.convert_file 'document.adoc', safe: :secure, to_file: true
+```
+
+## Feature comparison
+
+| Feature | UNSAFE | SAFE | SERVER | SECURE |
+|---------|--------|------|--------|--------|
+| `include::[]` directive | Allowed | Allowed (within source dir) | Allowed (within source dir) | Disabled |
+| Access to ancestor paths | Allowed | Denied | Denied | Denied |
+| Set `backend` in document header | Allowed | Allowed | Denied | Denied |
+| Set `source-highlighter` in document header | Allowed | Allowed | Denied | Denied |
+| File-system reads (stylesheets, data URIs) | Allowed | Allowed | Allowed | Denied |
+| Embedding binary content from document | Allowed | Allowed | Allowed | Denied |
+| Ruby restrictions | None | None | None | None |
+
+## Setting the safe mode
+
+### CLI
+
+```bash
+# UNSAFE (CLI default)
+asciidoctor document.adoc
+asciidoctor -S unsafe document.adoc
+
+# SAFE
+asciidoctor --safe document.adoc
+asciidoctor -S safe document.adoc
+
+# SERVER
+asciidoctor -S server document.adoc
+
+# SECURE
+asciidoctor -S secure document.adoc
+```
+
+### Ruby API
+
+```ruby
+require 'asciidoctor'
+
+# UNSAFE
+Asciidoctor.convert_file 'document.adoc', safe: :unsafe, to_file: true
+# or using the integer value
+Asciidoctor.convert_file 'document.adoc', safe: Asciidoctor::SafeMode::UNSAFE, to_file: true
+
+# SAFE
+Asciidoctor.convert_file 'document.adoc', safe: :safe, to_file: true
+
+# SERVER (recommended for server deployments)
+Asciidoctor.convert_file 'document.adoc', safe: :server, to_file: true
+
+# SECURE (API default)
+Asciidoctor.convert_file 'document.adoc', safe: :secure, to_file: true
+```
+
+## Checking the current safe mode
+
+After loading or converting a document, you can read the effective safe mode from the document object:
+
+```ruby
+doc = Asciidoctor.load_file 'document.adoc', safe: :safe
+puts doc.safe               # => 1
+puts doc.safe >= Asciidoctor::SafeMode::SERVER  # => false
+```

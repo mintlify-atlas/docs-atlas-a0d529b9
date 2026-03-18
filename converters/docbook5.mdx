@@ -1,0 +1,201 @@
+---
+title: "DocBook 5 converter"
+description: "Learn how to use Asciidoctor's built-in DocBook 5 converter to produce DocBook XML output for professional publishing workflows, and how to post-process it with tools like Apache FOP, dblatex, and xmlto."
+---
+
+The DocBook 5 converter transforms an AsciiDoc document into DocBook 5 XML. DocBook XML is not itself a publishable format — it is an intermediate representation designed for use with publishing toolchains that can produce PDF, HTML, EPUB, and other formats from a single source.
+
+| Property | Value |
+|---|---|
+| Backend names | `docbook5`, `docbook` |
+| Converter class | `Asciidoctor::Converter::DocBook5Converter` |
+| Output format | DocBook 5 XML |
+| File extension | `.xml` |
+
+## Basic usage
+
+<Tabs>
+  <Tab title="CLI">
+    ```bash
+    asciidoctor -b docbook5 document.adoc
+    # Produces document.xml in the current directory
+
+    # The alias 'docbook' also works
+    asciidoctor -b docbook document.adoc
+    ```
+  </Tab>
+  <Tab title="Ruby API">
+    ```ruby
+    require 'asciidoctor'
+
+    Asciidoctor.convert_file 'document.adoc',
+      backend: 'docbook5',
+      safe: :safe
+    ```
+  </Tab>
+</Tabs>
+
+## Example output
+
+Given the following AsciiDoc source:
+
+```asciidoc
+= The Dangers of Wolpertingers
+Mary Shelley
+2026-01-15
+:toc:
+:sectnums:
+
+Don't worry about gumberoos or splintercats.
+
+== Origins
+
+Wolpertingers are https://en.wikipedia.org/wiki/Wolpertinger[ravenous beasts].
+```
+
+The DocBook 5 converter produces:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?asciidoc-toc?>
+<?asciidoc-numbered?>
+<article xmlns="http://docbook.org/ns/docbook"
+         xmlns:xl="http://www.w3.org/1999/xlink"
+         version="5.0" xml:lang="en">
+<info>
+  <title>The Dangers of Wolpertingers</title>
+  <date>2026-01-15</date>
+</info>
+<simpara>Don&#8217;t worry about gumberoos or splintercats.</simpara>
+<section xml:id="_origins">
+  <title>Origins</title>
+  <simpara>Wolpertingers are
+    <link xl:href="https://en.wikipedia.org/wiki/Wolpertinger">ravenous beasts</link>.
+  </simpara>
+</section>
+</article>
+```
+
+## Key attributes
+
+### Document type
+
+The `doctype` attribute controls the root element of the DocBook output:
+
+| Value | Root element | Use case |
+|---|---|---|
+| `article` (default) | `<article>` | Short documents, journal articles |
+| `book` | `<book>` | Long-form content with chapters |
+| `manpage` | `<article>` wrapping `<refentry>` | Manual page content |
+
+```bash
+asciidoctor -b docbook5 -d book document.adoc
+```
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  backend: 'docbook5',
+  doctype: 'book',
+  safe: :safe
+```
+
+### Output file suffix
+
+The output file extension defaults to `.xml`. Override it with `outfilesuffix`:
+
+```bash
+asciidoctor -b docbook5 -a outfilesuffix=.docbook document.adoc
+```
+
+### Table of contents and section numbering
+
+The DocBook converter writes XML processing instructions to communicate TOC and numbering preferences to the downstream toolchain:
+
+```xml
+<?asciidoc-toc?>
+<?asciidoc-numbered?>
+```
+
+These are emitted when the `toc` and `sectnums` attributes are set, respectively. The DocBook toolchain stylesheet must be configured to honour them.
+
+## Post-processing with DocBook toolchains
+
+Once you have a `.xml` file, a DocBook toolchain converts it to a publishable format.
+
+<Steps>
+  <Step title="Generate the DocBook XML file">
+    ```bash
+    asciidoctor -b docbook5 document.adoc
+    ```
+  </Step>
+  <Step title="Convert to the target format">
+    Choose a toolchain based on your requirements:
+
+    <Tabs>
+      <Tab title="xmlto + FOP (PDF)">
+        Install `xmlto` and `fop` using your system package manager, then run:
+
+        ```bash
+        xmlto --skip-validation --with-fop pdf document.xml
+        ```
+
+        To customise the XSL stylesheet (required to support Asciidoctor processing instructions for page breaks and thematic breaks), create a fragment:
+
+        ```xml
+        <?xml version="1.0"?>
+        <xsl:stylesheet version="1.0"
+            xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+            xmlns:fo="http://www.w3.org/1999/XSL/Format">
+          <xsl:param name="hyphenate">false</xsl:param>
+          <xsl:template match="processing-instruction('asciidoc-br')">
+            <fo:block/>
+          </xsl:template>
+          <xsl:template match="processing-instruction('asciidoc-hr')">
+            <fo:block space-after="1em">
+              <fo:leader leader-pattern="rule" rule-thickness="0.5pt"
+                         rule-style="solid" leader-length.minimum="100%"/>
+            </fo:block>
+          </xsl:template>
+          <xsl:template match="processing-instruction('asciidoc-pagebreak')">
+            <fo:block break-after='page'/>
+          </xsl:template>
+        </xsl:stylesheet>
+        ```
+
+        Pass it to xmlto with `-m`:
+
+        ```bash
+        xmlto --skip-validation --with-fop -m custom.xsl pdf document.xml
+        ```
+      </Tab>
+      <Tab title="dblatex (PDF)">
+        ```bash
+        # Install dblatex, then:
+        xmlto --skip-validation pdf document.xml
+        ```
+      </Tab>
+      <Tab title="xsltproc (HTML)">
+        ```bash
+        xsltproc \
+          /usr/share/xml/docbook/stylesheet/docbook-xsl/html/docbook.xsl \
+          document.xml > output.html
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+<Info>
+The Asciidoctor project also maintains [asciidoctor-fopub](https://github.com/asciidoctor/asciidoctor-fopub), a Gradle-based wrapper around the DocBook toolchain that is pre-configured for Asciidoctor output. Note that the fopub project is archived and no longer actively maintained.
+</Info>
+
+## Common use cases
+
+- **PDF via Apache FOP or dblatex** — convert AsciiDoc to DocBook XML, then use the DocBook XSL stylesheets and a formatting engine to produce PDF.
+- **Technical books** — use `doctype: book` to structure content as DocBook chapters and parts before passing it to a publishing pipeline.
+- **Man pages via DocBook** — use `doctype: manpage` to generate a `<refentry>` structure, then post-process with `xsltproc` to produce groff man pages.
+- **Reuse in existing toolchains** — organisations that already process DocBook XML can add AsciiDoc as an authoring layer without changing their downstream toolchain.
+
+<Note>
+If you need DocBook 4.5 output, the community-maintained [asciidoctor-docbook45](https://github.com/asciidoctor/asciidoctor-docbook45) gem provides a separate converter for that schema version.
+</Note>

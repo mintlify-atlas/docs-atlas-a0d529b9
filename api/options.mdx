@@ -1,0 +1,248 @@
+---
+title: "API Options"
+description: "Complete reference for every option key accepted by Asciidoctor.convert, convert_file, load, and load_file."
+---
+
+All top-level API methods — `Asciidoctor.convert`, `Asciidoctor.convert_file`, `Asciidoctor.load`, and `Asciidoctor.load_file` — accept an options Hash as their second argument.
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  backend: 'html5',
+  attributes: { 'toc' => '' }
+```
+
+## Backend and output format
+
+<ParamField path=":backend" type="String" default="html5">
+  Output backend. Built-in values are `"html5"`, `"xhtml5"`, `"docbook5"`, and `"manpage"`. Aliases `"html"` and `"docbook"` are also accepted.
+
+  ```ruby
+  Asciidoctor.convert_file 'document.adoc', backend: 'docbook5', to_file: true
+  ```
+</ParamField>
+
+<ParamField path=":doctype" type="String" default="article">
+  Document type. Accepted values: `"article"`, `"book"`, `"manpage"`, `"inline"`.
+
+  ```ruby
+  Asciidoctor.convert_file 'book.adoc', doctype: 'book', to_file: true
+  ```
+</ParamField>
+
+<ParamField path=":standalone" type="Boolean" default="true when writing to a file, false otherwise">
+  When `true`, wraps the converted output in a complete document structure (header + footer). When `false`, returns only the body content as an embeddable fragment.
+
+  ```ruby
+  # Embeddable fragment (no header/footer)
+  html = Asciidoctor.convert content, safe: :safe, standalone: false
+
+  # Full standalone document
+  html = Asciidoctor.convert content, safe: :safe, standalone: true
+  ```
+</ParamField>
+
+## Output destination
+
+<ParamField path=":to_file" type="String | Boolean">
+  Controls where converted output is written.
+
+  - `true` — write to a file adjacent to the input with the backend extension
+  - `"/path/to/file.html"` — write to the specified path
+  - `false` or omitted — return the converted string
+
+  ```ruby
+  # Write output.html next to input.adoc
+  Asciidoctor.convert_file 'input.adoc', safe: :safe, to_file: true
+
+  # Write to a specific path
+  Asciidoctor.convert_file 'input.adoc', safe: :safe, to_file: 'dist/index.html'
+  ```
+</ParamField>
+
+<ParamField path=":to_dir" type="String">
+  Output directory. The output filename is derived from the input filename. When combined with `:to_file`, `:to_dir` is used as the base for resolving the relative file path.
+
+  ```ruby
+  Asciidoctor.convert_file 'input.adoc', safe: :safe, to_dir: 'output'
+  ```
+</ParamField>
+
+<ParamField path=":mkdirs" type="Boolean" default="false">
+  When `true`, creates the destination directory (and any missing parent directories) if it does not exist.
+
+  ```ruby
+  Asciidoctor.convert_file 'input.adoc',
+    safe: :safe,
+    to_dir: 'output/subdir',
+    mkdirs: true
+  ```
+</ParamField>
+
+## Safety
+
+<ParamField path=":safe" type="Symbol | Integer" default=":secure">
+  Safe mode level. Controls which features of the processor are enabled. Accepts a Symbol (`:unsafe`, `:safe`, `:server`, `:secure`) or the corresponding integer constant.
+
+  ```ruby
+  # Enable include directives but restrict file access to the source directory
+  Asciidoctor.convert_file 'document.adoc', safe: :safe, to_file: true
+
+  # Most permissive — all features enabled
+  Asciidoctor.convert_file 'document.adoc', safe: :unsafe, to_file: true
+  ```
+
+  See [Safe modes](/safe-modes) for a full description of each level.
+</ParamField>
+
+## Document attributes
+
+<ParamField path=":attributes" type="Hash | Array | String">
+  Document attributes to set before processing. These take precedence over attributes defined in the document header unless a soft-set modifier (`@`) is used.
+
+  Accepts:
+  - A `Hash` of `name => value` pairs
+  - An `Array` of `"name=value"` strings
+  - A space-delimited `String` of `"name=value"` pairs
+
+  ```ruby
+  # As a Hash
+  Asciidoctor.convert_file 'document.adoc',
+    safe: :safe,
+    attributes: { 'toc' => '', 'source-highlighter' => 'rouge' },
+    to_file: true
+
+  # As an Array
+  Asciidoctor.convert_file 'document.adoc',
+    safe: :safe,
+    attributes: ['toc', 'source-highlighter=rouge'],
+    to_file: true
+  ```
+</ParamField>
+
+## File paths
+
+<ParamField path=":base_dir" type="String">
+  Base directory for resolving relative paths to resources referenced by the document (images, includes, stylesheets). Defaults to the directory of the source file.
+
+  ```ruby
+  Asciidoctor.convert_file 'document.adoc',
+    safe: :safe,
+    base_dir: '/var/www/docs',
+    to_file: true
+  ```
+</ParamField>
+
+<ParamField path=":source_dir" type="String">
+  Source root directory. Used together with `:to_dir` to mirror the source directory structure in the output directory.
+</ParamField>
+
+<ParamField path=":destination_dir" type="String">
+  Destination output directory. Equivalent to `:to_dir`.
+</ParamField>
+
+## Custom templates
+
+<ParamField path=":template_dirs" type="Array<String>">
+  One or more directories containing custom converter templates that override the built-in templates. Requires the [tilt](https://github.com/rtomayko/tilt) gem.
+
+  Templates in later directories override those in earlier ones.
+
+  ```ruby
+  Asciidoctor.convert_file 'document.adoc',
+    safe: :safe,
+    template_dirs: ['/path/to/templates'],
+    to_file: true
+  ```
+</ParamField>
+
+<ParamField path=":template_engine" type="String">
+  Template engine used for custom converter templates (e.g., `"erb"`, `"haml"`, `"slim"`). The gem with the matching name is loaded automatically. If not specified, Asciidoctor auto-detects the engine from the template file extension.
+</ParamField>
+
+<ParamField path=":eruby" type="String" default="erb">
+  eRuby implementation for ERB-based templates. Accepted values: `"erb"`, `"erubi"`, `"erubis"`.
+</ParamField>
+
+## Loading extensions
+
+<ParamField path=":requires" type="Array<String>">
+  Libraries to require before processing (using Ruby's `require`). Useful for loading Asciidoctor extensions.
+
+  ```ruby
+  Asciidoctor.convert_file 'document.adoc',
+    safe: :safe,
+    requires: ['asciidoctor-diagram'],
+    to_file: true
+  ```
+</ParamField>
+
+<ParamField path=":load_paths" type="Array<String>">
+  Directories to add to `$LOAD_PATH` before processing, allowing `:requires` to load extensions from non-standard paths.
+
+  ```ruby
+  Asciidoctor.convert_file 'document.adoc',
+    safe: :safe,
+    load_paths: ['/path/to/extensions'],
+    requires: ['my-extension'],
+    to_file: true
+  ```
+</ParamField>
+
+## Diagnostics
+
+<ParamField path=":sourcemap" type="Boolean" default="false">
+  When `true`, attaches source location information (file path and line number) to each parsed block. Useful for extensions that need to reference original source positions.
+
+  ```ruby
+  doc = Asciidoctor.load_file 'document.adoc', safe: :safe, sourcemap: true
+  doc.blocks.each do |block|
+    puts "#{block.source_location.file}:#{block.source_location.lineno}"
+  end
+  ```
+</ParamField>
+
+<ParamField path=":timings" type="Asciidoctor::Timings">
+  An `Asciidoctor::Timings` instance that records time spent in each processing phase (read, parse, convert). Retrieve results by calling `timings.print_report`.
+
+  ```ruby
+  timings = Asciidoctor::Timings.new
+  Asciidoctor.convert_file 'document.adoc', safe: :safe, timings: timings, to_file: true
+  timings.print_report
+  ```
+</ParamField>
+
+## Common option combinations
+
+```ruby
+# Full standalone HTML with table of contents and syntax highlighting
+Asciidoctor.convert_file 'guide.adoc',
+  safe: :safe,
+  to_file: true,
+  attributes: {
+    'toc' => '',
+    'toc-title' => 'Table of Contents',
+    'source-highlighter' => 'rouge',
+    'imagesdir' => 'images'
+  }
+
+# Embeddable HTML fragment for a CMS or wiki
+html = Asciidoctor.convert File.read('article.adoc'),
+  safe: :safe,
+  standalone: false
+
+# DocBook output to a specific directory
+Asciidoctor.convert_file 'manual.adoc',
+  safe: :safe,
+  backend: 'docbook5',
+  doctype: 'book',
+  to_dir: 'dist',
+  mkdirs: true
+
+# Parse without converting to inspect the document tree
+doc = Asciidoctor.load_file 'report.adoc',
+  safe: :server,
+  sourcemap: true
+puts doc.doctitle
+doc.sections.each {|s| puts s.title }
+```

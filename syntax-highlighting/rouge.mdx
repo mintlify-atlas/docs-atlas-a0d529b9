@@ -1,0 +1,248 @@
+---
+title: "Rouge"
+description: "Use Rouge, a pure-Ruby syntax highlighter, with Asciidoctor for build-time source code highlighting with themes, line numbers, and line highlighting."
+keywords: ["rouge", "syntax highlighting", "source highlighter", "ruby", "rouge-style", "rouge-css"]
+---
+
+[Rouge](http://rouge.jneen.net) is a pure-Ruby syntax highlighter that requires no external runtime dependencies. Because it is written in Ruby, it integrates naturally with Asciidoctor and is the recommended build-time syntax highlighter for most projects.
+
+Rouge supports a wide array of languages and provides features such as line numbering, line highlighting, and multiple CSS themes.
+
+## Installation
+
+<Tabs>
+  <Tab title="gem">
+    ```bash
+    gem install rouge
+    ```
+  </Tab>
+  <Tab title="Gemfile">
+    Add Rouge to your project's `Gemfile`:
+
+    ```ruby
+    gem 'rouge'
+    ```
+
+    Then install dependencies:
+
+    ```bash
+    bundle install
+    ```
+  </Tab>
+  <Tab title="apt-get (Debian/Ubuntu)">
+    ```bash
+    sudo apt-get install ruby-rouge
+    ```
+  </Tab>
+  <Tab title="dnf (Fedora)">
+    ```bash
+    sudo dnf install rubygem-rouge
+    ```
+  </Tab>
+</Tabs>
+
+## Enabling Rouge
+
+Once the gem is installed, set the `source-highlighter` attribute to `rouge`:
+
+```asciidoc
+:source-highlighter: rouge
+```
+
+You can also pass it from the CLI or Ruby API without modifying your documents:
+
+```bash
+asciidoctor -a source-highlighter=rouge document.adoc
+```
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  attributes: { 'source-highlighter' => 'rouge' }
+```
+
+## Rouge attributes
+
+The following document attributes control Rouge's behavior. Set them in the document header or pass them via CLI/API.
+
+### `rouge-style`
+
+Sets the color theme used for highlighting. The default theme is `github`.
+
+```asciidoc
+:source-highlighter: rouge
+:rouge-style: monokai
+```
+
+To see all available themes, run:
+
+```bash
+rougify list
+```
+
+Popular themes include `github`, `monokai`, `pastie`, `colorful`, `thankful_eyes`, `gruvbox`, and `base16`. You can also browse the [theme source files](https://github.com/rouge-ruby/rouge/tree/HEAD/lib/rouge/themes) in the Rouge repository.
+
+### `rouge-css`
+
+Controls how CSS is applied to highlighted tokens. Accepts `class` (default) or `style`.
+
+| Value | Behavior |
+|---|---|
+| `class` | Applies CSS classes to tokens; requires a linked or embedded stylesheet |
+| `style` | Applies inline styles directly to each token span |
+
+In `class` mode (the default), Asciidoctor embeds or links the generated Rouge stylesheet automatically. In `style` mode, inline styles are written directly onto each `<span>` element — no external stylesheet is needed, but the output is larger.
+
+```asciidoc
+:source-highlighter: rouge
+:rouge-css: style
+```
+
+### `rouge-linenums-mode`
+
+Controls how line numbers are laid out when line numbering is enabled. Accepts `table` (default) or `inline`.
+
+<Tip>
+If line wrapping is enabled on preformatted blocks (the `prewrap` attribute), set `rouge-linenums-mode` to `inline` so that line numbers stay aligned with their corresponding lines.
+</Tip>
+
+```asciidoc
+:source-highlighter: rouge
+:rouge-linenums-mode: inline
+```
+
+## Source block examples
+
+### Basic source block
+
+```asciidoc
+:source-highlighter: rouge
+
+[,ruby]
+----
+def greet(name)
+  puts "Hello, #{name}!"
+end
+
+greet 'Rouge'
+----
+```
+
+### Custom theme
+
+```asciidoc
+:source-highlighter: rouge
+:rouge-style: monokai
+
+[,ruby]
+----
+puts "Hello, Rouge!"
+----
+```
+
+### Line numbers
+
+Enable line numbers using the `linenums` option on a source block:
+
+```asciidoc
+:source-highlighter: rouge
+
+[%linenums,ruby]
+----
+ORDERED_LIST_KEYWORDS = {
+  'loweralpha' => 'a',
+  'lowerroman' => 'i',
+  'upperalpha' => 'A',
+  'upperroman' => 'I'
+}
+----
+```
+
+To enable line numbers on all source blocks in a document, set the `source-linenums-option` attribute:
+
+```asciidoc
+:source-highlighter: rouge
+:source-linenums-option:
+```
+
+### Highlighting specific lines
+
+Use the `highlight` block attribute to emphasize specific lines. Lines are specified as a comma-separated list or range:
+
+```asciidoc
+:source-highlighter: rouge
+
+[,ruby,highlight=2..4]
+----
+def process(items)
+  items.each do |item|  # <1>
+    item.validate
+    item.save
+  end
+end
+----
+<1> Iterates over every item in the collection.
+```
+
+### Callouts
+
+Rouge is a build-time highlighter, so Asciidoctor hides callout markers before passing source to Rouge, then restores them in the correct positions:
+
+```asciidoc
+:source-highlighter: rouge
+
+[,ruby]
+----
+require 'asciidoctor'  # <1>
+
+doc = Asciidoctor.load_file 'document.adoc', safe: :safe  # <2>
+puts doc.convert  # <3>
+----
+<1> Load the Asciidoctor library.
+<2> Parse the AsciiDoc document.
+<3> Convert and print the output.
+```
+
+## CSS vs. inline style modes
+
+<CodeGroup>
+
+```asciidoc class mode (default)
+:source-highlighter: rouge
+:rouge-css: class
+
+[,python]
+----
+print("class mode")
+----
+```
+
+```asciidoc style mode
+:source-highlighter: rouge
+:rouge-css: style
+
+[,python]
+----
+print("inline style mode")
+----
+```
+
+</CodeGroup>
+
+In **class mode**, Asciidoctor generates a stylesheet named `rouge-<theme>.css` and either embeds it in the `<head>` of the HTML document or links to it when `linkcss` is set. You can also write the stylesheet to disk by setting the `copycss` attribute.
+
+In **style mode**, no stylesheet is generated. All color information is written as inline `style` attributes on each `<span>` element. This is useful for embedding documents in environments where external stylesheets are not supported.
+
+## Listing available themes
+
+To list all themes bundled with your installed version of Rouge:
+
+```bash
+rougify list
+```
+
+To preview a theme in the terminal:
+
+```bash
+rougify highlight -t monokai path/to/file.rb
+```

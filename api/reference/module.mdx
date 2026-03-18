@@ -1,0 +1,216 @@
+---
+title: "Asciidoctor module"
+description: "Top-level API methods for parsing and converting AsciiDoc content from Ruby."
+---
+
+The `Asciidoctor` module is the primary entry point to the Ruby API. It exposes four public class methods for loading and converting AsciiDoc content.
+
+## Methods
+
+### `Asciidoctor.convert`
+
+Parses the AsciiDoc source input and converts it to the specified backend format in a single step.
+
+```ruby
+Asciidoctor.convert(input, options = {})
+```
+
+Accepts input as an `IO`, `StringIO`, `String`, or `String Array`. Returns the converted `String` when writing to memory, or the `Document` object when writing to a file.
+
+<ParamField path="input" type="String | IO | Array<String>" required>
+  The AsciiDoc source to convert. Accepts a `String`, an `IO`-compatible object (such as a `File`), or an `Array` of lines.
+</ParamField>
+
+<ParamField path="options" type="Hash">
+  Options controlling conversion behavior. All keys are Symbols.
+
+  <Expandable title="options">
+    <ResponseField name=":safe" type="Symbol | Integer">
+      Safe mode level. Accepts `:unsafe` (0), `:safe` (1), `:server` (10), or `:secure` (20). Defaults to `:secure`.
+    </ResponseField>
+    <ResponseField name=":backend" type="String">
+      Output backend name. Defaults to `'html5'`. Use `'docbook'` for DocBook 5.
+    </ResponseField>
+    <ResponseField name=":doctype" type="String">
+      Document type. One of `'article'`, `'book'`, `'manpage'`, or `'inline'`. Defaults to `'article'`.
+    </ResponseField>
+    <ResponseField name=":standalone" type="Boolean">
+      Whether to include the document header and footer. Defaults to `false` when converting to a string, `true` when writing to a file.
+    </ResponseField>
+    <ResponseField name=":to_file" type="String | Boolean">
+      Destination file path. Set to `true` to write next to the input file. When set, the method returns the `Document` object instead of a `String`.
+    </ResponseField>
+    <ResponseField name=":to_dir" type="String">
+      Directory for the output file. Used together with `:to_file`.
+    </ResponseField>
+    <ResponseField name=":attributes" type="Hash | Array<String> | String">
+      Document attributes to set. Accepts a `Hash`, an `Array` of `'name=value'` strings, or a space-separated `String`.
+    </ResponseField>
+    <ResponseField name=":template_dirs" type="Array<String>">
+      Directories containing Tilt-compatible templates for custom rendering.
+    </ResponseField>
+    <ResponseField name=":mkdirs" type="Boolean">
+      Create missing output directories. Defaults to `false`.
+    </ResponseField>
+    <ResponseField name=":sourcemap" type="Boolean">
+      Track source file and line number for each parsed block. Defaults to `false`.
+    </ResponseField>
+    <ResponseField name=":logger" type="Logger">
+      Custom logger instance. Replaces the global logger for this call.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+**Returns** `String` (converted output) or `Asciidoctor::Document` (when writing to a file).
+
+```ruby
+# Convert a string to embeddable HTML
+html = Asciidoctor.convert "= Hello\n\nFirst paragraph.", safe: :safe
+puts html
+# => <div class="sect1"> ...
+
+# Convert and write a full HTML file
+Asciidoctor.convert "= Hello\n\nContent.",
+  to_file: 'output.html',
+  standalone: true,
+  safe: :safe
+
+# Convert with custom attributes
+html = Asciidoctor.convert source,
+  safe: :safe,
+  attributes: { 'toc' => '', 'source-highlighter' => 'highlight.js' }
+```
+
+---
+
+### `Asciidoctor.convert_file`
+
+Opens the specified file, parses its contents, and converts it to the specified backend format.
+
+```ruby
+Asciidoctor.convert_file(filename, options = {})
+```
+
+<ParamField path="filename" type="String" required>
+  Path to the AsciiDoc source file to convert.
+</ParamField>
+
+<ParamField path="options" type="Hash">
+  Same options as `Asciidoctor.convert`. See above for the full list.
+</ParamField>
+
+**Returns** `String` (converted output) or `Asciidoctor::Document` (when writing to a file).
+
+```ruby
+# Convert a file; writes document.html next to document.adoc
+Asciidoctor.convert_file 'document.adoc', safe: :safe
+
+# Convert to DocBook and write to a specific path
+Asciidoctor.convert_file 'document.adoc',
+  backend: 'docbook',
+  to_file: 'build/document.xml',
+  safe: :safe
+
+# Convert to a string without writing a file
+html = Asciidoctor.convert_file 'document.adoc',
+  to_file: false,
+  safe: :safe
+```
+
+---
+
+### `Asciidoctor.load`
+
+Parses AsciiDoc source input into an `Asciidoctor::Document` object without converting it. Use this when you need to inspect or modify the document tree before conversion.
+
+```ruby
+Asciidoctor.load(input, options = {})
+```
+
+<ParamField path="input" type="String | IO | Array<String>" required>
+  The AsciiDoc source to parse. Accepts the same types as `convert`.
+</ParamField>
+
+<ParamField path="options" type="Hash">
+  Options controlling parsing behavior. Accepts the same keys as `convert`, with the following addition:
+
+  <Expandable title="options">
+    <ResponseField name=":parse" type="Boolean">
+      Set to `false` to skip the parse phase and return an unparsed `Document`. Defaults to `true`.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+**Returns** `Asciidoctor::Document`.
+
+```ruby
+doc = Asciidoctor.load "= Document Title\n\nfirst paragraph\n\nsecond paragraph",
+  safe: :safe
+
+puts doc.doctitle   # => "Document Title"
+puts doc.blocks.count # => 1
+
+# Walk the block tree
+doc.blocks.each do |block|
+  puts "#{block.context}: #{block.content.slice(0, 40)}"
+end
+
+# Convert after inspecting
+html = doc.convert
+```
+
+---
+
+### `Asciidoctor.load_file`
+
+Opens the specified file and parses its contents into an `Asciidoctor::Document` object.
+
+```ruby
+Asciidoctor.load_file(filename, options = {})
+```
+
+<ParamField path="filename" type="String" required>
+  Path to the AsciiDoc source file to load.
+</ParamField>
+
+<ParamField path="options" type="Hash">
+  Same options as `Asciidoctor.load`. See above for the full list.
+</ParamField>
+
+**Returns** `Asciidoctor::Document`.
+
+```ruby
+doc = Asciidoctor.load_file 'document.adoc', safe: :safe
+
+puts doc.doctitle
+puts doc.author
+puts doc.attr('source-highlighter')
+
+# Convert the loaded document
+html = doc.convert
+```
+
+---
+
+## Safe mode levels
+
+Safe mode restricts what the processor and the document can do. Pass the level as a symbol or integer.
+
+| Symbol | Value | Description |
+|--------|-------|-------------|
+| `:unsafe` | 0 | No security restrictions. Ruby itself still applies its own rules. |
+| `:safe` | 1 | Prevents access to files outside the source file's parent directory. |
+| `:server` | 10 | Disallows setting backend or source-highlighter from within the document. Recommended for server deployments. |
+| `:secure` | 20 | Disallows file includes, data URIs, and linked stylesheets. **Default.** |
+
+```ruby
+# Explicitly set safe mode by symbol
+Asciidoctor.convert source, safe: :server
+
+# Or by integer constant
+Asciidoctor.convert source, safe: Asciidoctor::SafeMode::SERVER
+```
+
+<Note>
+  When using the API, the default safe mode is `:secure`. Features such as the `include` directive require `:safe` or lower. For most server deployments, `:server` is the recommended minimum.
+</Note>

@@ -1,0 +1,266 @@
+---
+title: "Asciidoctor::Section"
+description: "Represents a section in a parsed AsciiDoc document, including its title, level, numbering, and child blocks."
+---
+
+`Asciidoctor::Section` represents a titled section in the document tree. It inherits from `AbstractBlock`, so it can hold child blocks (paragraphs, listings, nested sections, and so on). Sections are the primary mechanism for organizing document content into a hierarchy.
+
+Sections are not normally created directly. They are produced by the parser and accessible through `Document#sections`, `Document#blocks`, and `AbstractBlock#find_by`.
+
+```ruby
+doc = Asciidoctor.load source, safe: :safe
+
+doc.sections.each do |sect|
+  puts "#{sect.level}: #{sect.title}  (id: #{sect.id})"
+end
+```
+
+## Attributes
+
+### `title`
+
+The title string for this section, as written in the AsciiDoc source. Also aliased as `name`.
+
+```ruby
+sect.title # => "Getting Started"
+sect.name  # => "Getting Started"  (alias)
+```
+
+**Type** `String`.
+
+### `level`
+
+Integer indicating the nesting depth. Level 0 is the document title (preamble/header), level 1 corresponds to `==`, level 2 to `===`, and so on.
+
+```ruby
+sect.level # => 1
+```
+
+**Type** `Integer`.
+
+### `id`
+
+The string ID assigned to this section. Auto-generated from the title by default (e.g., `_getting_started`), or set explicitly via `[[anchor]]`.
+
+```ruby
+sect.id # => "_getting_started"
+```
+
+**Type** `String | nil`.
+
+### `index`
+
+The 0-based index of this section within its parent block.
+
+```ruby
+sect.index # => 0
+```
+
+**Type** `Integer`.
+
+### `sectname`
+
+The section type name as a string. Common values include `'section'`, `'chapter'`, `'part'`, `'appendix'`, and `'abstract'`.
+
+```ruby
+sect.sectname # => "section"
+```
+
+**Type** `String`.
+
+### `special`
+
+Boolean flag indicating whether this is a special section (e.g., appendix, abstract, preface) or a child of one.
+
+```ruby
+sect.special # => false
+```
+
+**Type** `Boolean`.
+
+### `numbered`
+
+Boolean (or `:chapter`) flag indicating whether this section is numbered. Only meaningful when the `sectnums` document attribute is set.
+
+```ruby
+sect.numbered # => true
+```
+
+**Type** `Boolean | Symbol`.
+
+### `blocks`
+
+Array of direct child `AbstractBlock` objects under this section, including nested sections and content blocks. Inherited from `AbstractBlock`.
+
+```ruby
+sect.blocks.map(&:context)
+# => [:paragraph, :section, :listing]
+```
+
+**Type** `Array<AbstractBlock>`.
+
+### `caption`
+
+The caption string for this section. Only relevant for appendices, where it appears before the section number.
+
+```ruby
+sect.caption # => "Appendix A."
+```
+
+**Type** `String | nil`.
+
+### `source_location`
+
+A `SourceLocation` struct tracking the file and line number where this section begins. Only set when the `:sourcemap` option is enabled.
+
+```ruby
+sect.source_location.file   # => "/path/to/document.adoc"
+sect.source_location.lineno # => 42
+```
+
+**Type** `SourceLocation | nil`.
+
+---
+
+## Methods
+
+### `sections?`
+
+Returns `true` if this section has any child `Section` objects.
+
+```ruby
+sect.sections?
+```
+
+**Returns** `Boolean`.
+
+```ruby
+doc.sections.each do |sect|
+  if sect.sections?
+    puts "#{sect.title} has subsections"
+  end
+end
+```
+
+### `sectnum`
+
+Returns the dot-separated section number string that uniquely identifies the position of this section in the document. Only meaningful when `numbered` is `true`.
+
+```ruby
+sectnum(delimiter = '.', append = nil)
+```
+
+<ParamField path="delimiter" type="String">
+  The separator character between level numbers. Defaults to `'.'`.
+</ParamField>
+
+<ParamField path="append" type="String | Boolean">
+  String to append at the end, or `false` to omit the trailing delimiter. Defaults to `nil`, which repeats the delimiter.
+</ParamField>
+
+**Returns** `String`.
+
+```ruby
+# For a level-2 section that is the second child of section 1
+sect.sectnum            # => "1.2."
+sect.sectnum '.', false # => "1.2"
+sect.sectnum ',', ','   # => "1,2,"
+```
+
+### `xreftext`
+
+Generates the cross-reference text used to link to this section. Returns the explicit `reftext` if set, otherwise builds a string based on the `xrefstyle` attribute.
+
+```ruby
+xreftext(xrefstyle = nil)
+```
+
+<ParamField path="xrefstyle" type="String">
+  Formatting style. One of `'full'`, `'short'`, or `'basic'`. Defaults to `nil` (returns the plain title).
+</ParamField>
+
+**Returns** `String`.
+
+### `generate_id`
+
+Generates a string ID from this section's title using the document's `idprefix` and `idseparator` attributes.
+
+```ruby
+sect.generate_id
+```
+
+**Returns** `String`.
+
+```ruby
+sect.title       # => "Getting Started"
+sect.generate_id # => "_getting_started"
+```
+
+### `Section.generate_id`
+
+Class method. Generates a string ID from an arbitrary title string, using the given document's attribute settings.
+
+```ruby
+Asciidoctor::Section.generate_id(title, document)
+```
+
+<ParamField path="title" type="String" required>
+  The title to derive the ID from.
+</ParamField>
+
+<ParamField path="document" type="Asciidoctor::Document" required>
+  The document whose `idprefix` and `idseparator` attributes are used.
+</ParamField>
+
+**Returns** `String`.
+
+---
+
+## Traversing sections
+
+### From a document
+
+```ruby
+doc = Asciidoctor.load source, safe: :safe
+
+# Top-level sections only
+doc.sections.each do |sect|
+  puts "== #{sect.title}"
+
+  # Nested sections
+  sect.blocks.select {|b| b.context == :section }.each do |sub|
+    puts "   === #{sub.title}"
+  end
+end
+```
+
+### Using `find_by`
+
+```ruby
+# All sections at any depth
+all_sections = doc.find_by(context: :section)
+
+# Only level-2 sections
+level2 = doc.find_by(context: :section) {|s| s.level == 2 }
+
+# Special sections only (appendix, abstract, etc.)
+special = doc.find_by(context: :section) {|s| s.special }
+```
+
+### Numbered sections
+
+Enable section numbering with the `sectnums` attribute, then read numbers from the `sectnum` method:
+
+```ruby
+doc = Asciidoctor.load source,
+  safe: :safe,
+  attributes: { 'sectnums' => '' }
+
+doc.find_by(context: :section).each do |sect|
+  next unless sect.numbered
+  puts "#{sect.sectnum false} #{sect.title}"
+end
+# => 1 Introduction
+# => 1.1 Background
+# => 2 Details
+```

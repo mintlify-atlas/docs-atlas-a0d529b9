@@ -1,0 +1,211 @@
+---
+title: "Pygments"
+description: "Use Pygments with Asciidoctor for build-time syntax highlighting. Requires the pygments.rb gem and a Python installation."
+keywords: ["pygments", "syntax highlighting", "pygments.rb", "python", "source highlighter", "pygments-style"]
+---
+
+[Pygments](https://pygments.org) is a widely used syntax highlighter that supports a broad range of [programming and template languages](https://pygments.org/languages/). Asciidoctor integrates with Pygments through the `pygments.rb` gem, which manages calls to the Pygments Python library.
+
+<Note>
+You do not need to install Pygments separately — it is bundled with the `pygments.rb` gem. However, you **must** have Python installed on your system, because `pygments.rb` invokes Pygments as an external process.
+</Note>
+
+## Prerequisites
+
+The version of Python required depends on which release of `pygments.rb` you use:
+
+- **pygments.rb 1.x** requires Python 2. Verify you have a `python2` (Linux), `python` (macOS), or `py -2` (Windows) executable on your `PATH`.
+- **pygments.rb 2.x** requires Python 3. Verify you have a `python3` (Linux/macOS) or `py -3` (Windows) executable on your `PATH`.
+
+## Installation
+
+<Tabs>
+  <Tab title="gem">
+    Install Python using your system package manager, then install the gem:
+
+    ```bash
+    gem install pygments.rb
+    ```
+  </Tab>
+  <Tab title="Gemfile">
+    Add to your `Gemfile`:
+
+    ```ruby
+    gem 'pygments.rb'
+    ```
+
+    Then install:
+
+    ```bash
+    bundle install
+    ```
+  </Tab>
+  <Tab title="apt-get + gem">
+    ```bash
+    sudo apt-get install python3
+    gem install pygments.rb
+    ```
+  </Tab>
+</Tabs>
+
+## Enabling Pygments
+
+Once installed, set the `source-highlighter` attribute to `pygments`:
+
+```asciidoc
+:source-highlighter: pygments
+```
+
+Or pass it via CLI:
+
+```bash
+asciidoctor -a source-highlighter=pygments document.adoc
+```
+
+Or via the Ruby API:
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  attributes: { 'source-highlighter' => 'pygments' }
+```
+
+## Pygments attributes
+
+### `pygments-style`
+
+Sets the color theme. Default is `default`.
+
+```asciidoc
+:source-highlighter: pygments
+:pygments-style: monokai
+```
+
+To list all available style names, run:
+
+```bash
+$(dirname $(gem which pygments.rb))/../vendor/pygments-main/pygmentize -L styles
+```
+
+This command invokes `pygmentize` from the Pygments version bundled with the gem, ensuring the list matches what Asciidoctor will use.
+
+### `pygments-css`
+
+Controls how CSS is applied to highlighted tokens. Accepts `class` (default) or `style`.
+
+| Value | Behavior |
+|---|---|
+| `class` | Applies CSS classes; requires a linked or embedded Pygments stylesheet |
+| `style` | Applies inline styles directly on each token span |
+
+In `class` mode, Asciidoctor generates and embeds a Pygments stylesheet (or links to it when `linkcss` is set). In `style` mode, no external stylesheet is needed.
+
+```asciidoc
+:source-highlighter: pygments
+:pygments-css: style
+```
+
+### `pygments-linenums-mode`
+
+Controls how line numbers are rendered when line numbering is enabled. Accepts `table` (default) or `inline`.
+
+<Tip>
+If line wrapping is enabled on preformatted blocks (the `prewrap` attribute is set), use `pygments-linenums-mode: inline` so that line numbers remain aligned with their corresponding lines.
+</Tip>
+
+```asciidoc
+:source-highlighter: pygments
+:pygments-linenums-mode: inline
+```
+
+## Source block examples
+
+### Basic source block
+
+```asciidoc
+:source-highlighter: pygments
+
+[,python]
+----
+def greet(name):
+    print(f"Hello, {name}!")
+
+greet("Pygments")
+----
+```
+
+### Custom theme with inline line numbers
+
+```asciidoc
+:source-highlighter: pygments
+:pygments-style: manni
+:pygments-linenums-mode: inline
+
+[%linenums,ruby]
+----
+ORDERED_LIST_KEYWORDS = {
+  'loweralpha' => 'a',
+  'lowerroman' => 'i',
+  'upperalpha' => 'A',
+  'upperroman' => 'I'
+}
+----
+```
+
+### Highlighting specific lines
+
+```asciidoc
+:source-highlighter: pygments
+
+[,java,highlight=3..5]
+----
+public class Greeter {
+
+  public static void main(String[] args) {
+    System.out.println("Hello, Pygments!");
+  }
+}
+----
+```
+
+## Adjusting the timeout (pygments.rb 1.x only)
+
+Pygments runs as an external process managed by a timeout in pygments.rb 1.x (not needed with 2.x). The default timeout is 8 seconds. If Pygments is taking longer than that to complete, increase the timeout by setting the `MENTOS_TIMEOUT` environment variable:
+
+```bash
+export MENTOS_TIMEOUT=30
+asciidoctor -a source-highlighter=pygments document.adoc
+```
+
+This extends the allowed processing time to 30 seconds. This setting is not required when using pygments.rb 2.x with Python 3.
+
+## Using a custom Pygments installation
+
+If you want to use your own Pygments installation rather than the one bundled with the gem, create an initialization script and require it before Asciidoctor runs:
+
+```ruby
+# pygments_init.rb
+require 'pygments'
+
+# Point to your custom Pygments installation
+Pygments.start '/path/to/pygments'
+
+# Optionally register a custom or missing lexer
+# Pygments::Lexer.create name: 'Turtle', aliases: ['turtle'],
+#     filenames: ['*.ttl'], mimetypes: ['text/turtle', 'application/x-turtle']
+```
+
+Then require the script when invoking Asciidoctor:
+
+```bash
+asciidoctor -r ./pygments_init.rb -a source-highlighter=pygments document.adoc
+```
+
+Or via the Ruby API:
+
+```ruby
+require 'asciidoctor'
+require_relative './pygments_init.rb'
+
+Asciidoctor.convert_file 'document.adoc', safe: :safe
+```

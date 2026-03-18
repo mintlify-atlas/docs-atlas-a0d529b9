@@ -1,0 +1,266 @@
+---
+title: "Install Asciidoctor"
+description: "Install Asciidoctor using gem, Bundler, Homebrew, MacPorts, Docker, or your Linux or Windows package manager."
+---
+
+<Note>
+  Asciidoctor requires one of the following Ruby implementations:
+
+  - **CRuby (MRI)** 2.7 – 3.4
+  - **JRuby** 9.4.0 – 10.0.2
+  - **TruffleRuby** (GraalVM)
+
+  Asciidoctor runs on Linux, macOS, and Windows.
+</Note>
+
+## Choose your installation method
+
+<Tabs>
+  <Tab title="gem install">
+    The `gem` command installs the latest stable release of Asciidoctor directly from [RubyGems.org](https://rubygems.org/gems/asciidoctor).
+
+    Before running `gem install`, set up a Ruby version manager such as [RVM](https://rvm.io) or [rbenv](https://github.com/rbenv/rbenv) so gems are installed in user space rather than system-wide.
+
+    <Steps>
+      <Step title="Activate your Ruby version">
+        ```bash
+        rvm use 3.4
+        ```
+      </Step>
+      <Step title="Install the gem">
+        ```bash
+        gem install asciidoctor
+        ```
+
+        To install a pre-release version (such as a release candidate):
+
+        ```bash
+        gem install asciidoctor --pre
+        ```
+      </Step>
+      <Step title="Verify the installation">
+        ```bash
+        asciidoctor --version
+        ```
+      </Step>
+    </Steps>
+
+    **Upgrading**
+
+    ```bash
+    gem install asciidoctor
+    gem cleanup asciidoctor
+    ```
+
+    Running `gem install` again installs the new version alongside the old one. Run `gem cleanup asciidoctor` afterwards to remove older versions.
+  </Tab>
+
+  <Tab title="Bundler">
+    Use Bundler when you want to lock Asciidoctor to a specific version in a Ruby project.
+
+    <Steps>
+      <Step title="Add asciidoctor to your Gemfile">
+        ```ruby Gemfile
+        source 'https://rubygems.org'
+
+        gem 'asciidoctor'
+        # Pin to a specific version:
+        # gem 'asciidoctor', '2.0.22'
+        ```
+      </Step>
+      <Step title="Install dependencies">
+        ```bash
+        bundle install
+        ```
+      </Step>
+      <Step title="Verify the installation">
+        ```bash
+        bundle exec asciidoctor --version
+        ```
+      </Step>
+    </Steps>
+
+    **Upgrading**
+
+    Update the version pin in your `Gemfile`, then run:
+
+    ```bash
+    bundle install
+    ```
+
+    Avoid running `bundle update` without specifying a gem name, as it updates all gems in your project.
+  </Tab>
+
+  <Tab title="macOS">
+    <Steps>
+      <Step title="Install using Homebrew or MacPorts">
+        <CodeGroup>
+
+        ```bash Homebrew
+        brew install asciidoctor
+        ```
+
+        ```bash MacPorts
+        sudo port install asciidoctor
+        ```
+
+        </CodeGroup>
+
+        If you don't have Homebrew, follow the [installation instructions](https://brew.sh) first. If you don't have MacPorts, follow the [MacPorts installation instructions](https://www.macports.org/install.php) first.
+
+        Homebrew installs Asciidoctor into an exclusive prefix that is independent of system gems.
+      </Step>
+      <Step title="Verify the installation">
+        ```bash
+        asciidoctor --version
+        ```
+      </Step>
+    </Steps>
+
+    **Upgrading**
+
+    <CodeGroup>
+
+    ```bash Homebrew
+    brew update
+    brew upgrade asciidoctor
+    ```
+
+    ```bash MacPorts
+    sudo port selfupdate
+    sudo port upgrade asciidoctor
+    ```
+
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="Linux">
+    Asciidoctor is packaged for most major Linux distributions. The version provided by your package manager may lag behind the latest RubyGems release. To get the latest version, use `gem install` instead.
+
+    <Steps>
+      <Step title="Install using your package manager">
+        <CodeGroup>
+
+        ```bash APT (Debian / Ubuntu)
+        sudo apt-get install -y asciidoctor
+        ```
+
+        ```bash DNF (Fedora / CentOS / RHEL)
+        sudo dnf install -y asciidoctor
+        ```
+
+        ```bash apk (Alpine Linux)
+        sudo apk add asciidoctor
+        ```
+
+        ```bash pacman (Arch Linux)
+        sudo pacman -S asciidoctor
+        ```
+
+        </CodeGroup>
+      </Step>
+      <Step title="Verify the installation">
+        ```bash
+        asciidoctor --version
+        ```
+      </Step>
+    </Steps>
+
+    **Upgrading**
+
+    <CodeGroup>
+
+    ```bash APT
+    sudo apt-get upgrade -y asciidoctor
+    ```
+
+    ```bash DNF
+    sudo dnf update -y asciidoctor
+    ```
+
+    ```bash apk
+    sudo apk add -u asciidoctor
+    ```
+
+    </CodeGroup>
+
+    Package repositories for each distribution:
+
+    - [Alpine Linux](https://pkgs.alpinelinux.org/packages?name=asciidoctor)
+    - [Arch Linux](https://www.archlinux.org/packages/?name=asciidoctor)
+    - [Debian](https://packages.debian.org/sid/asciidoctor)
+    - [Fedora](https://apps.fedoraproject.org/packages/rubygem-asciidoctor)
+    - [OpenSUSE](https://software.opensuse.org/package/rubygem-asciidoctor)
+    - [Ubuntu](https://packages.ubuntu.com/search?keywords=asciidoctor)
+  </Tab>
+
+  <Tab title="Windows">
+    <Warning>
+      On non-English Windows environments, you may encounter an `Encoding::UndefinedConversionError` when invoking Asciidoctor. To fix this, override the default character encodings to UTF-8 by setting the `RUBYOPT` environment variable:
+
+      ```bash
+      set RUBYOPT=-E utf-8:utf-8
+      ```
+
+      Add this to your shell profile or system environment variables so it persists across sessions. If you use an IDE such as Eclipse, also configure the encoding to UTF-8 there.
+    </Warning>
+
+    You have two options to get Ruby on Windows.
+
+    <Steps>
+      <Step title="Install Ruby">
+        <CodeGroup>
+
+        ```bash Chocolatey
+        choco install ruby
+        ```
+
+        ```text RubyInstaller
+        Download the installer from https://rubyinstaller.org/downloads/
+        and follow the installation wizard.
+        ```
+
+        </CodeGroup>
+      </Step>
+      <Step title="Install the asciidoctor gem">
+        ```bash
+        gem install asciidoctor
+        ```
+      </Step>
+      <Step title="Verify the installation">
+        ```bash
+        asciidoctor --version
+        ```
+      </Step>
+    </Steps>
+
+    **Upgrading**
+
+    ```bash
+    gem install asciidoctor
+    gem cleanup asciidoctor
+    ```
+  </Tab>
+
+  <Tab title="Docker">
+    The official Asciidoctor Docker image includes Asciidoctor and a set of commonly used extensions.
+
+    <Steps>
+      <Step title="Pull the image">
+        ```bash
+        docker pull asciidoctor/docker-asciidoctor
+        ```
+      </Step>
+      <Step title="Convert a document">
+        Run the container with your document directory mounted as a volume:
+
+        ```bash
+        docker run --rm -v $(pwd):/documents asciidoctor/docker-asciidoctor \
+          asciidoctor document.adoc
+        ```
+      </Step>
+    </Steps>
+
+    See the [docker-asciidoctor repository](https://github.com/asciidoctor/docker-asciidoctor) for full usage instructions, available tags, and extension details.
+  </Tab>
+</Tabs>

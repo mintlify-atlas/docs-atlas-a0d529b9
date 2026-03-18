@@ -1,0 +1,156 @@
+---
+title: "Using the CLI"
+description: "Convert AsciiDoc files to HTML, DocBook, and other formats from the command line using the asciidoctor command."
+---
+
+The `asciidoctor` command-line interface (CLI) lets you convert AsciiDoc source files to HTML5, DocBook 5, man pages, and other output formats directly from your terminal. It is the fastest way to convert documents without writing any code.
+
+Use the CLI when you want to:
+
+- Convert one or more `.adoc` files as a one-off task or in a build script
+- Integrate Asciidoctor into a shell pipeline or Makefile
+- Explore conversion options interactively before embedding them in an application
+
+If you need to convert documents from within a Ruby application or process parsed document objects programmatically, use the [Ruby API](/api/usage) instead.
+
+## Synopsis
+
+```bash
+asciidoctor [OPTION]... FILE...
+```
+
+If `FILE` is `-`, the AsciiDoc source is read from standard input. Application log messages are written to `STDERR`.
+
+## Verify your installation
+
+After installing the gem, confirm the `asciidoctor` command is on your `PATH`:
+
+```bash
+asciidoctor --version
+```
+
+You should see output similar to:
+
+```
+Asciidoctor 2.0.23 [https://asciidoctor.org]
+Runtime Environment (ruby 3.3.0p0 [x86_64-linux]) (lc:UTF-8 fs:UTF-8 in:UTF-8 ex:UTF-8)
+```
+
+## Common usage examples
+
+<Steps>
+  <Step title="Convert a file to HTML">
+    The default backend is `html5`. The output file is written to the same directory as the input file, with the `.html` extension.
+
+    ```bash
+    asciidoctor document.adoc
+    ```
+
+    This produces `document.html` next to `document.adoc`.
+  </Step>
+
+  <Step title="Write output to a different directory">
+    Use `-D` to specify a destination directory. The directory must already exist unless you are using an integration that creates it.
+
+    ```bash
+    asciidoctor -D output document.adoc
+    ```
+
+    This writes `output/document.html`.
+  </Step>
+
+  <Step title="Convert to DocBook">
+    Set the backend to `docbook5` with `-b`:
+
+    ```bash
+    asciidoctor -b docbook5 document.adoc
+    ```
+
+    This writes `document.xml` in the same directory as the source file.
+  </Step>
+
+  <Step title="Set document attributes">
+    Pass `-a` to define or override document attributes. You can specify this option more than once.
+
+    ```bash
+    asciidoctor -a toc -a toc-title="Contents" document.adoc
+    ```
+
+    <Tip>
+      Append `@` to the attribute name or value to make it a soft-set — the document can still override it. For example: `-a toc@`.
+    </Tip>
+  </Step>
+
+  <Step title="Convert multiple files">
+    Pass multiple filenames or a glob pattern to convert several documents in one invocation:
+
+    ```bash
+    asciidoctor *.adoc
+    ```
+
+    ```bash
+    asciidoctor chapter-01.adoc chapter-02.adoc chapter-03.adoc
+    ```
+  </Step>
+
+  <Step title="Write output to stdout">
+    Use `-o -` to write the converted document to standard output instead of a file:
+
+    ```bash
+    asciidoctor -o - document.adoc
+    ```
+
+    This is useful for piping output to another command.
+  </Step>
+
+  <Step title="Produce an embedded (fragment) document">
+    Use `-e` (or `-s`) to omit the document header and footer. The output contains only the body content, suitable for inserting into an existing HTML page.
+
+    ```bash
+    asciidoctor -e document.adoc
+    ```
+  </Step>
+</Steps>
+
+## Preserving directory structure
+
+When converting many files that are organized in subdirectories, use `-R` (source root) together with `-D` (destination directory) to mirror the source tree in the output:
+
+```bash
+asciidoctor -R docs -D output docs/**/*.adoc
+```
+
+Files under `docs/guide/` will be written under `output/guide/`, and so on.
+
+## Reading from stdin
+
+Pipe AsciiDoc content directly into `asciidoctor`:
+
+```bash
+echo '= Hello World
+
+This is a test.' | asciidoctor -o hello.html -
+```
+
+## Getting help
+
+```bash
+# Show usage and all options
+asciidoctor --help
+
+# Show AsciiDoc syntax reference
+asciidoctor --help syntax
+
+# Dump the man page in troff format
+asciidoctor --help manpage
+```
+
+<Tip>
+  Use `asciidoctor --help manpage | man -l -` to view the man page in your terminal pager.
+</Tip>
+
+## Next steps
+
+- [CLI options reference](/cli/options) — complete list of every flag and switch
+- [Safe modes](/safe-modes) — understand the security model and when to change the default
+- [Ruby API](/api/usage) — embed Asciidoctor in a Ruby application

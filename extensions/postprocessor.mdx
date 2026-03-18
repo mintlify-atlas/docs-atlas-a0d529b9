@@ -1,0 +1,167 @@
+---
+title: "Postprocessor"
+description: "Modify the converted output string before it is written using a Postprocessor extension."
+---
+
+A `Postprocessor` runs after conversion is complete, but before the output is written to the output stream. It receives the `Document` and the fully-converted output as a `String`, and must return the (possibly modified) output string.
+
+Because postprocessors operate on the final serialized output, the format of that string depends on the backend in use (HTML 5, DocBook 5, etc.). Check `document.backend` or the relevant document attributes to write backend-aware processors.
+
+## Class API
+
+```ruby
+class Asciidoctor::Extensions::Postprocessor < Asciidoctor::Extensions::Processor
+  # Override this method in your subclass.
+  #
+  # document - The Asciidoctor::Document that was converted.
+  # output   - The converted output String.
+  #
+  # Returns the (modified) output String.
+  def process(document, output)
+    raise NotImplementedError
+  end
+end
+```
+
+## Registration
+
+<Tabs>
+  <Tab title="Class">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      postprocessor AnalyticsPostprocessor
+    end
+    ```
+  </Tab>
+  <Tab title="Block DSL">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      postprocessor do
+        process do |document, output|
+          output.gsub '</body>', "<p>Footer</p>\n</body>"
+        end
+      end
+    end
+    ```
+  </Tab>
+  <Tab title="Preferred (runs first)">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      prefer :postprocessor do
+        process do |document, output|
+          # runs before all other postprocessors
+          output
+        end
+      end
+    end
+    ```
+  </Tab>
+</Tabs>
+
+## Example: stripping HTML attributes
+
+This example is taken directly from the Asciidoctor test suite. It strips all HTML element attributes from the output, leaving only bare tags:
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class StripAttributesPostprocessor < Asciidoctor::Extensions::Postprocessor
+  def process document, output
+    output.gsub %r/<(\w+).*?>/m, '<\\1>'
+  end
+end
+
+Asciidoctor::Extensions.register do
+  postprocessor StripAttributesPostprocessor
+end
+```
+
+## Example: injecting an analytics script
+
+This postprocessor injects a tracking script before `</body>` when converting to HTML:
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class AnalyticsPostprocessor < Asciidoctor::Extensions::Postprocessor
+  SCRIPT = <<~HTML
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+      ga('create', 'UA-XXXXX-Y', 'auto');
+      ga('send', 'pageview');
+    </script>
+  HTML
+
+  def process document, output
+    return output unless document.backend == 'html5'
+    output.sub '</body>', %(#{SCRIPT}\n</body>)
+  end
+end
+
+Asciidoctor::Extensions.register do
+  postprocessor AnalyticsPostprocessor
+end
+```
+
+## Example: adding a custom footer
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class FooterPostprocessor < Asciidoctor::Extensions::Postprocessor
+  def process document, output
+    return output unless document.backend == 'html5'
+
+    version   = document.attr 'revnumber', 'unknown'
+    timestamp = Time.now.utc.strftime '%Y-%m-%d'
+    footer    = %(<footer class="doc-footer">Version #{version} &mdash; Built #{timestamp}</footer>)
+
+    output.sub '</body>', %(#{footer}\n</body>)
+  end
+end
+
+Asciidoctor::Extensions.register do
+  postprocessor FooterPostprocessor
+end
+```
+
+Given a document with `:revnumber: 2.1`, the converted HTML will contain:
+
+```html
+<footer class="doc-footer">Version 2.1 &mdash; Built 2026-03-18</footer>
+</body>
+```
+
+## Backend detection
+
+Use `document.backend` to branch on the active backend:
+
+```ruby
+case document.backend
+when 'html5'
+  # modify HTML
+when 'docbook5'
+  # modify DocBook XML
+end
+```
+
+Common backend-related document attributes:
+
+| Attribute | Example value |
+|-----------|---------------|
+| `document.backend` | `'html5'`, `'docbook5'`, `'manpage'` |
+| `document.attr 'outfilesuffix'` | `'.html'`, `'.xml'` |
+| `document.attr 'doctype'` | `'article'`, `'book'`, `'manpage'` |
+
+<Warning>
+  The postprocessor receives a String, not a parsed DOM. Use string replacement carefully — patterns like `output.sub` and `output.gsub` can match unintended locations if the output is complex. Consider anchoring replacements to unique strings such as `</body>` or `</html>`.
+</Warning>
+
+<Note>
+  Multiple postprocessors run in registration order. Each receives the output returned by the previous one, so they form a pipeline. Use `prefer :postprocessor` to insert a postprocessor at the front of the queue.
+</Note>

@@ -1,0 +1,171 @@
+---
+title: "CLI Options"
+description: "Complete reference for every flag and option accepted by the asciidoctor command."
+---
+
+All options can be passed in any order before the input file argument(s). Options that accept a value can be written as `-X VALUE`, `-XVALUE` (for single-character flags), or `--long-name=VALUE`.
+
+## Backend and output
+
+<ParamField path="-b, --backend" type="string" default="html5">
+  Backend output format. Built-in values are `html5`, `xhtml5`, `docbook5`, and `manpage`. You can also use the aliases `html` (maps to `html5`) and `docbook` (maps to `docbook5`). Additional backends (such as `pdf` and `epub3`) are available via extended converters.
+</ParamField>
+
+<ParamField path="-d, --doctype" type="string" default="article">
+  Document type. Accepted values are `article`, `book`, `manpage`, and `inline`.
+
+  - `article` — standard document with a single level-0 title
+  - `book` — allows multiple level-0 section titles
+  - `manpage` — enables man-page metadata parsing
+  - `inline` — formats a single paragraph and returns it without a wrapper element
+</ParamField>
+
+<ParamField path="-o, --out-file" type="string">
+  Write output to the specified file path. Use `-` to write to standard output. Defaults to a file adjacent to the input with the backend's file extension. If the input is read from stdin or a named pipe, the output defaults to stdout.
+</ParamField>
+
+<ParamField path="-D, --destination-dir" type="string">
+  Write output files to this directory instead of the directory containing the source file. Resolved relative to the working directory.
+</ParamField>
+
+<ParamField path="-R, --source-dir" type="string">
+  Source root directory. When used together with `--destination-dir`, the subdirectory structure under this path is mirrored in the destination directory.
+</ParamField>
+
+## Document settings
+
+<ParamField path="-a, --attribute" type="string">
+  Define, override, or unset a document attribute. May be specified more than once.
+
+  Accepted forms:
+
+  | Form | Effect |
+  |------|--------|
+  | `name` | Set attribute to an empty string |
+  | `name=value` | Set attribute to `value`; overrides the document |
+  | `name=value@` or `name@=value` | Soft-set: document can override |
+  | `name!` | Unset the attribute |
+
+  A value containing spaces must be quoted: `-a "toc-title=My Contents"`.
+</ParamField>
+
+<ParamField path="-n, --section-numbers">
+  Auto-number section titles. Equivalent to `-a sectnums`.
+</ParamField>
+
+<ParamField path="-e, --embedded">
+  Output an embedded document that excludes the header, footer, and everything outside the body. Equivalent to `--no-header-footer`.
+</ParamField>
+
+<ParamField path="-s, --no-header-footer">
+  Suppress the document header and footer. The output contains only the converted body content. Equivalent to `--embedded`.
+</ParamField>
+
+## Safety settings
+
+<ParamField path="-S, --safe-mode" type="string" default="unsafe">
+  Set the safe mode level explicitly. Accepted values: `unsafe`, `safe`, `server`, `secure`.
+
+  Disables potentially dangerous macros (such as `include::[]`) at higher levels. See [Safe modes](/safe-modes) for a full description of each level.
+</ParamField>
+
+<ParamField path="--safe">
+  Shortcut for `--safe-mode safe`. Enables include directives but prevents access to ancestor paths of the source file. Provided for compatibility with the `asciidoc` command.
+</ParamField>
+
+<ParamField path="-B, --base-dir" type="string">
+  Base directory containing the document and its resources. Defaults to the directory of the source file. When combined with a safe mode, this can be used to restrict the root the processor can access.
+</ParamField>
+
+## Custom templates
+
+<ParamField path="-T, --template-dir" type="string">
+  A directory containing custom converter templates that override the built-in templates. Requires the [tilt](https://github.com/rtomayko/tilt) gem. May be specified more than once; templates in later directories take precedence.
+</ParamField>
+
+<ParamField path="-E, --template-engine" type="string">
+  Template engine to use for custom converter templates (e.g., `erb`, `erubi`, `haml`). The gem with the matching name is loaded automatically. If not specified, the engine is auto-detected from the template file extension.
+</ParamField>
+
+<ParamField path="--eruby" type="string" default="erb">
+  eRuby implementation to use when rendering ERB-based custom templates. Accepted values: `erb`, `erubi`, `erubis`.
+</ParamField>
+
+## Loading extensions
+
+<ParamField path="-I, --load-path" type="string">
+  Add a directory to `$LOAD_PATH` so that `-r` can require extensions from outside the default Ruby load path. May be specified more than once.
+</ParamField>
+
+<ParamField path="-r, --require" type="string">
+  Require the specified library before executing the processor (uses Ruby's `require`). May be specified more than once.
+
+  ```bash
+  asciidoctor -r asciidoctor-diagram document.adoc
+  ```
+</ParamField>
+
+## Logging and diagnostics
+
+<ParamField path="--log-level" type="string" default="WARN">
+  Minimum severity level of log messages to print to `STDERR`. Accepted values (case-insensitive): `DEBUG`, `INFO`, `WARN` (or `WARNING`), `ERROR`, `FATAL`.
+</ParamField>
+
+<ParamField path="--failure-level" type="string" default="FATAL">
+  Minimum log level that causes the process to exit with a non-zero exit code. Accepted values: `INFO`, `WARN` (or `WARNING`), `ERROR`, `FATAL`.
+
+  For example, to treat warnings as failures:
+
+  ```bash
+  asciidoctor --failure-level WARN document.adoc
+  ```
+</ParamField>
+
+<ParamField path="-q, --quiet">
+  Silence all application log messages and Ruby script warnings.
+</ParamField>
+
+<ParamField path="-v, --verbose">
+  Print all log messages including `DEBUG` and `INFO` to `STDERR`. If `--log-level` is also specified, it takes precedence.
+</ParamField>
+
+<ParamField path="-w, --warnings">
+  Turn on Ruby script warnings (`$VERBOSE = true`).
+</ParamField>
+
+<ParamField path="--trace">
+  Include a full backtrace in error output. Useful for debugging extension code or unexpected failures.
+</ParamField>
+
+<ParamField path="-t, --timings">
+  Print a timings report to `STDERR` showing the time spent in each phase: read, parse, and convert.
+</ParamField>
+
+<ParamField path="--sourcemap">
+  Attach source location information (file path and line number) to each parsed block. Useful for extensions that need to reference the original source position.
+</ParamField>
+
+## Program information
+
+<ParamField path="-h, --help" type="string">
+  Print a help message. Optionally accepts a topic:
+
+  - (no topic) — print command usage
+  - `syntax` — print an AsciiDoc syntax reference sheet
+  - `manpage` — dump the Asciidoctor man page in troff/groff format
+</ParamField>
+
+<ParamField path="-V, --version">
+  Print the Asciidoctor version and Ruby runtime environment. `-v` also acts as `--version` when no input files are provided.
+</ParamField>
+
+## Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `1` | Failure (usage error, configuration error, processing failure, or unexpected error) |
+
+## Environment variables
+
+`SOURCE_DATE_EPOCH` — If set to an integer value, Asciidoctor uses that Unix timestamp as the document date for all input files. This supports [reproducible builds](https://reproducible-builds.org/specs/source-date-epoch/).

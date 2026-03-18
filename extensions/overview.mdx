@@ -1,0 +1,164 @@
+---
+title: "Extensions overview"
+description: "Extend the Asciidoctor processing pipeline with preprocessors, block processors, inline macros, tree processors, and postprocessors."
+---
+
+Asciidoctor's extension system lets you hook into every stage of the processing pipeline — from raw source lines all the way to the final output string. Extensions are written in Ruby and registered either globally or per document.
+
+## Processing pipeline
+
+Extensions participate in processing in a defined order:
+
+<Steps>
+  <Step title="Preprocessor">
+    Runs after source lines are normalized but before parsing begins. Can modify or replace source lines. See [Preprocessor](/extensions/preprocessor).
+  </Step>
+  <Step title="IncludeProcessor">
+    Intercepts `include::target[]` directives. The first processor that claims a target handles it.
+  </Step>
+  <Step title="Parser (BlockProcessor / BlockMacroProcessor)">
+    The parser builds the abstract syntax tree (AST). Custom delimited blocks and block macros are handled by registered `BlockProcessor` and `BlockMacroProcessor` instances. See [Block processor](/extensions/block-processor).
+  </Step>
+  <Step title="TreeProcessor">
+    Runs on the fully-parsed AST. Ideal for analysis, transformation, or adding nodes. See [Tree processor](/extensions/tree-processor).
+  </Step>
+  <Step title="Conversion + InlineMacroProcessor">
+    Conversion begins; inline markup is processed. Custom inline macros (`name:target[attrs]`) are handled by `InlineMacroProcessor` instances. See [Inline macro processor](/extensions/inline-macro-processor).
+  </Step>
+  <Step title="Postprocessor">
+    Receives the converted output as a String and can modify it before it is written. See [Postprocessor](/extensions/postprocessor).
+  </Step>
+</Steps>
+
+## Registering extensions
+
+You can register extensions globally so they apply to every document, or pass a registry as a per-document option.
+
+<Tabs>
+  <Tab title="Global registration">
+    ```ruby
+    require 'asciidoctor'
+    require 'asciidoctor/extensions'
+
+    Asciidoctor::Extensions.register do
+      preprocessor  MyPreprocessor
+      tree_processor MyTreeProcessor
+      postprocessor MyPostprocessor
+      block         MyBlockProcessor
+      inline_macro  MyInlineMacroProcessor
+    end
+    ```
+
+    Globally registered extensions apply every time `Asciidoctor.convert` or `Asciidoctor.load` is called. Remove all global registrations with:
+
+    ```ruby
+    Asciidoctor::Extensions.unregister_all
+    ```
+  </Tab>
+  <Tab title="Per-document registry">
+    ```ruby
+    require 'asciidoctor'
+    require 'asciidoctor/extensions'
+
+    registry = Asciidoctor::Extensions.create do
+      tree_processor MyTreeProcessor
+    end
+
+    doc = Asciidoctor.load source, extension_registry: registry
+    ```
+
+    The `extension_registry:` option accepts a `Registry` instance created with `Asciidoctor::Extensions.create`. Global registrations are ignored when `extensions: false` is passed.
+  </Tab>
+  <Tab title="Extension Group class">
+    ```ruby
+    class MyExtensionGroup < Asciidoctor::Extensions::Group
+      def activate registry
+        registry.preprocessor  MyPreprocessor
+        registry.block         MyBlockProcessor, :myblock
+        registry.inline_macro  MyInlineMacroProcessor, :mymacro
+      end
+    end
+
+    # Register globally
+    Asciidoctor::Extensions.register :my_group, MyExtensionGroup
+
+    # Or self-register
+    MyExtensionGroup.register :my_group
+    ```
+
+    `Group` subclasses implement `activate(registry)` and receive the `Registry` instance directly.
+  </Tab>
+</Tabs>
+
+## Minimal complete example
+
+The following snippet registers one extension of each major type and converts a document:
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class HelloPreprocessor < Asciidoctor::Extensions::Preprocessor
+  def process document, reader
+    reader.lines.unshift 'NOTE: Preprocessed.'
+    reader
+  end
+end
+
+class ShoutBlock < Asciidoctor::Extensions::BlockProcessor
+  use_dsl
+  named :shout
+  on_context :paragraph
+  parse_content_as :simple
+
+  def process parent, reader, attrs
+    create_paragraph parent, reader.lines.map(&:upcase), attrs
+  end
+end
+
+class BtnMacro < Asciidoctor::Extensions::InlineMacroProcessor
+  use_dsl
+  named :btn
+
+  def process parent, target, attrs
+    create_inline parent, :quoted, %(<kbd>#{target}</kbd>), type: :unquoted
+  end
+end
+
+Asciidoctor::Extensions.register do
+  preprocessor HelloPreprocessor
+  block        ShoutBlock
+  inline_macro BtnMacro
+end
+
+puts Asciidoctor.convert(<<~ADOC)
+  = Demo
+
+  [shout]
+  hello world
+
+  Press btn:[Enter] to continue.
+ADOC
+
+Asciidoctor::Extensions.unregister_all
+```
+
+## Extension types
+
+<CardGroup cols={2}>
+  <Card title="Preprocessor" icon="file-lines" href="/extensions/preprocessor">
+    Modify source lines before parsing.
+  </Card>
+  <Card title="Block processor" icon="cube" href="/extensions/block-processor">
+    Handle custom delimited blocks and paragraphs.
+  </Card>
+  <Card title="Inline macro processor" icon="code" href="/extensions/inline-macro-processor">
+    Handle custom inline macros of the form `name:target[attrs]`.
+  </Card>
+  <Card title="Tree processor" icon="sitemap" href="/extensions/tree-processor">
+    Traverse and transform the parsed AST.
+  </Card>
+  <Card title="Postprocessor" icon="wand-magic-sparkles" href="/extensions/postprocessor">
+    Modify the converted output string.
+  </Card>
+</CardGroup>

@@ -1,0 +1,429 @@
+---
+title: "Extensions::Processor"
+description: "Base class for all Asciidoctor extension processors, providing helper methods for creating AST nodes and parsing content."
+---
+
+`Asciidoctor::Extensions::Processor` is the abstract base class from which all extension processors inherit. It provides:
+
+- A class-level `config` hash and `option` DSL method for declaring processor defaults.
+- An instance-level `config` hash populated at initialization.
+- A suite of helper methods for creating AST nodes (`Block`, `Inline`, `Section`, `List`, and so on) and for parsing content.
+
+You never instantiate `Processor` directly. Instead, subclass one of the concrete processor classes:
+
+| Subclass | Registered via |
+|----------|----------------|
+| `Preprocessor` | `registry.preprocessor` |
+| `TreeProcessor` | `registry.tree_processor` |
+| `Postprocessor` | `registry.postprocessor` |
+| `IncludeProcessor` | `registry.include_processor` |
+| `DocinfoProcessor` | `registry.docinfo_processor` |
+| `BlockProcessor` | `registry.block` |
+| `BlockMacroProcessor` | `registry.block_macro` |
+| `InlineMacroProcessor` | `registry.inline_macro` |
+
+---
+
+## Class methods
+
+### `config`
+
+Returns the static configuration `Hash` for this processor class. Initialized lazily as an empty hash.
+
+```ruby
+MyProcessor.config # => { content_model: :simple, name: :shout }
+```
+
+**Returns** `Hash`.
+
+### `option`
+
+Declares a default configuration value for all instances of this processor class.
+
+```ruby
+option(key, default_value)
+```
+
+<ParamField path="key" type="Symbol" required>
+  The configuration key.
+</ParamField>
+
+<ParamField path="default_value" type="Object" required>
+  The value to assign in the class-level config hash.
+</ParamField>
+
+```ruby
+class ShoutBlock < Asciidoctor::Extensions::BlockProcessor
+  option :contexts, [:open, :paragraph]
+  option :content_model, :simple
+
+  def process parent, reader, attrs
+    create_paragraph parent, reader.read_lines.map(&:upcase), attrs
+  end
+end
+```
+
+---
+
+## Instance methods
+
+### `config`
+
+Returns the per-instance configuration `Hash`, which is the class config merged with any overrides passed to the constructor.
+
+```ruby
+processor.config # => { contexts: [:open, :paragraph], content_model: :simple }
+```
+
+**Returns** `Hash`.
+
+---
+
+## Node creation helpers
+
+### `create_block`
+
+Creates a new `Block` node and links it to the specified parent.
+
+```ruby
+create_block(parent, context, source, attrs, opts = {})
+```
+
+<ParamField path="parent" type="AbstractBlock" required>
+  The parent block to which this block belongs.
+</ParamField>
+
+<ParamField path="context" type="Symbol" required>
+  The block context (e.g., `:paragraph`, `:listing`, `:sidebar`).
+</ParamField>
+
+<ParamField path="source" type="String | Array<String>" required>
+  The raw source content for the block.
+</ParamField>
+
+<ParamField path="attrs" type="Hash" required>
+  Block attributes hash.
+</ParamField>
+
+<ParamField path="opts" type="Hash">
+  Additional options passed to the `Block` constructor (e.g., `:content_model`, `:subs`).
+</ParamField>
+
+**Returns** `Asciidoctor::Block`.
+
+```ruby
+create_block parent, :listing, 'puts "hello"', { 'language' => 'ruby' }, subs: :default
+```
+
+### `create_paragraph`
+
+Convenience method that calls `create_block` with context `:paragraph`.
+
+```ruby
+create_paragraph(parent, source, attrs, opts = {})
+```
+
+**Returns** `Asciidoctor::Block`.
+
+```ruby
+create_paragraph parent, 'Hello, _World_!', {}
+```
+
+### `create_open_block`
+
+Convenience method that calls `create_block` with context `:open`.
+
+```ruby
+create_open_block(parent, source, attrs, opts = {})
+```
+
+**Returns** `Asciidoctor::Block`.
+
+### `create_example_block`
+
+Convenience method that calls `create_block` with context `:example`.
+
+```ruby
+create_example_block(parent, source, attrs, opts = {})
+```
+
+**Returns** `Asciidoctor::Block`.
+
+### `create_pass_block`
+
+Convenience method that calls `create_block` with context `:pass`. Useful for injecting raw HTML or other output directly.
+
+```ruby
+create_pass_block(parent, source, attrs, opts = {})
+```
+
+**Returns** `Asciidoctor::Block`.
+
+```ruby
+create_pass_block parent, '<hr class="fancy">', {}, content_model: :raw
+```
+
+### `create_listing_block`
+
+Convenience method that calls `create_block` with context `:listing`.
+
+```ruby
+create_listing_block(parent, source, attrs, opts = {})
+```
+
+**Returns** `Asciidoctor::Block`.
+
+### `create_literal_block`
+
+Convenience method that calls `create_block` with context `:literal`.
+
+```ruby
+create_literal_block(parent, source, attrs, opts = {})
+```
+
+**Returns** `Asciidoctor::Block`.
+
+### `create_inline`
+
+Creates a new `Inline` node and binds it to the specified parent.
+
+```ruby
+create_inline(parent, context, text, opts = {})
+```
+
+<ParamField path="parent" type="AbstractBlock" required>
+  The parent block that contains this inline element.
+</ParamField>
+
+<ParamField path="context" type="Symbol" required>
+  The inline context. Common values: `:quoted`, `:anchor`, `:image`, `:break`.
+</ParamField>
+
+<ParamField path="text" type="String" required>
+  The text content of the inline node.
+</ParamField>
+
+<ParamField path="opts" type="Hash">
+  Options passed to `Inline.new`.
+
+  <Expandable title="options">
+    <ResponseField name=":type" type="Symbol">
+      Inline subtype (e.g., `:strong`, `:emphasis`, `:xref`, `:link`).
+    </ResponseField>
+    <ResponseField name=":target" type="String">
+      Target URI or anchor ID.
+    </ResponseField>
+    <ResponseField name=":attributes" type="Hash">
+      Attributes to assign to the inline node.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+**Returns** `Asciidoctor::Inline`.
+
+```ruby
+# Quoted inline (formatted text)
+create_inline parent, :quoted, 'Hello', type: :strong
+
+# Anchor (link)
+create_inline parent, :anchor, 'Asciidoctor',
+  type: :link, target: 'https://asciidoctor.org'
+```
+
+### `create_inline_pass`
+
+Convenience method that calls `create_inline` with context `:quoted`. Suitable for inline passthroughs where you want the text rendered verbatim.
+
+```ruby
+create_inline_pass(parent, text, opts = {})
+```
+
+**Returns** `Asciidoctor::Inline`.
+
+### `create_anchor`
+
+Convenience method that calls `create_inline` with context `:anchor`.
+
+```ruby
+create_anchor(parent, text, opts = {})
+```
+
+**Returns** `Asciidoctor::Inline`.
+
+### `create_section`
+
+Creates a new `Section` node in the same manner as the parser.
+
+```ruby
+create_section(parent, title, attrs, opts = {})
+```
+
+<ParamField path="parent" type="AbstractBlock" required>
+  The parent `Section` or `Document`.
+</ParamField>
+
+<ParamField path="title" type="String" required>
+  The section title string.
+</ParamField>
+
+<ParamField path="attrs" type="Hash" required>
+  Attributes controlling section behavior. Use `'style'` for special sections (e.g., `'appendix'`) and `'id'` to assign an explicit ID.
+</ParamField>
+
+<ParamField path="opts" type="Hash">
+  <Expandable title="options">
+    <ResponseField name=":level" type="Integer">
+      The section level. Defaults to one greater than the parent level.
+    </ResponseField>
+    <ResponseField name=":numbered" type="Boolean">
+      Force section numbering on or off, overriding the `sectnums` attribute.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+**Returns** `Asciidoctor::Section`.
+
+### `create_list`
+
+Creates a new `List` node and links it to the specified parent.
+
+```ruby
+create_list(parent, context, attrs = nil)
+```
+
+<ParamField path="parent" type="AbstractBlock" required>
+  The parent block.
+</ParamField>
+
+<ParamField path="context" type="Symbol" required>
+  The list context: `:ulist`, `:olist`, `:colist`, or `:dlist`.
+</ParamField>
+
+<ParamField path="attrs" type="Hash">
+  Attributes to set on the list block.
+</ParamField>
+
+**Returns** `Asciidoctor::List`.
+
+### `create_list_item`
+
+Creates a new `ListItem` and links it to the specified parent `List`.
+
+```ruby
+create_list_item(parent, text = nil)
+```
+
+**Returns** `Asciidoctor::ListItem`.
+
+### `create_image_block`
+
+Creates a new image block and links it to the specified parent.
+
+```ruby
+create_image_block(parent, attrs, opts = {})
+```
+
+<ParamField path="parent" type="AbstractBlock" required>
+  The parent block.
+</ParamField>
+
+<ParamField path="attrs" type="Hash" required>
+  Must include `'target'` (image path). May also include `'alt'`, `'title'`, and `'caption'`.
+</ParamField>
+
+**Returns** `Asciidoctor::Block`.
+
+---
+
+## Content parsing helpers
+
+### `parse_content`
+
+Parses AsciiDoc block content and attaches the resulting blocks to the parent. Useful when a processor generates AsciiDoc markup that should be re-parsed.
+
+```ruby
+parse_content(parent, content, attributes = nil)
+```
+
+<ParamField path="parent" type="AbstractBlock" required>
+  The block to which parsed child blocks are attached.
+</ParamField>
+
+<ParamField path="content" type="String | Array<String> | Reader" required>
+  The AsciiDoc content to parse.
+</ParamField>
+
+<ParamField path="attributes" type="Hash">
+  Attributes to apply during parsing.
+</ParamField>
+
+**Returns** the parent `AbstractBlock`.
+
+```ruby
+process do |parent, reader, attrs|
+  block = create_open_block parent, [], attrs
+  parse_content block, "NOTE: This was generated by an extension."
+  block
+end
+```
+
+### `parse_attributes`
+
+Parses an attribute list string into a `Hash` of attributes.
+
+```ruby
+parse_attributes(block, attrlist, opts = {})
+```
+
+<ParamField path="block" type="AbstractBlock" required>
+  The current block, used for applying substitutions.
+</ParamField>
+
+<ParamField path="attrlist" type="String" required>
+  The raw attribute list string to parse.
+</ParamField>
+
+<ParamField path="opts" type="Hash">
+  <Expandable title="options">
+    <ResponseField name=":positional_attributes" type="Array<String>">
+      Names to map positional attributes to, in order.
+    </ResponseField>
+    <ResponseField name=":sub_attributes" type="Boolean">
+      When `true`, resolve attribute references in the attrlist before parsing.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+**Returns** `Hash`.
+
+```ruby
+parse_attributes parent, 'source,ruby,linenums',
+  positional_attributes: ['style', 'language']
+# => { 'style' => 'source', 'language' => 'ruby', 3 => 'linenums' }
+```
+
+---
+
+## Full processor example
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class ShoutBlock < Asciidoctor::Extensions::BlockProcessor
+  option :contexts, [:paragraph, :open]
+  option :content_model, :simple
+
+  def process parent, reader, attrs
+    lines = reader.read_lines.map(&:upcase)
+    create_paragraph parent, lines, attrs
+  end
+end
+
+Asciidoctor::Extensions.register do
+  block ShoutBlock, :shout
+end
+
+puts Asciidoctor.convert '[shout]\nHello, World!', safe: :safe
+# => <div class="paragraph"><p>HELLO, WORLD!</p></div>
+```

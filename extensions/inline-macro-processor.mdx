@@ -1,0 +1,190 @@
+---
+title: "Inline macro processor"
+description: "Handle custom inline macros of the form name:target[attrs] with an InlineMacroProcessor extension."
+---
+
+An `InlineMacroProcessor` handles custom inline macros that appear inside paragraph and other inline contexts. The macro syntax is:
+
+```asciidoc
+name:target[attrlist]
+```
+
+For example, `btn:[Save]` or `degrees:100[units=F]`. Asciidoctor matches the macro by name and calls the processor's `process` method during conversion.
+
+## Class API
+
+```ruby
+class Asciidoctor::Extensions::InlineMacroProcessor < Asciidoctor::Extensions::Processor
+  attr_accessor :name  # The registered macro name (Symbol)
+
+  # Returns the regexp used to detect this macro in inline content.
+  # Computed from name and format; frozen after first access.
+  def regexp
+    @config[:regexp] ||= resolve_regexp @name.to_s, @config[:format]
+  end
+
+  # Override this method in your subclass.
+  #
+  # parent     - The parent Block that contains this inline node.
+  # target     - The macro target String (the part between the colon and the brackets).
+  # attributes - A Hash of parsed macro attributes.
+  #
+  # Returns an Inline node or a String to replace the macro in the output.
+  def process(parent, target, attributes)
+    raise NotImplementedError
+  end
+end
+```
+
+### Class-level options
+
+| Option | Description |
+|--------|-------------|
+| `:format` | `:long` (default) — requires a target (`name:target[attrs]`). `:short` — target is empty (`name:[attrs]`). |
+| `:content_model` | `:attributes` (default) — bracket content is parsed as an attribute list. `:text` — bracket content is treated as plain text. |
+| `:positional_attrs` | Array of attribute names to map to positional arguments. |
+| `:default_attrs` | Hash of default attribute values. |
+| `:regexp` | Override the detection regexp entirely. |
+
+### Helper methods (inherited from `Processor`)
+
+| Method | Description |
+|--------|-------------|
+| `create_inline(parent, context, text, opts={})` | Creates an `Inline` node. Common contexts: `:quoted`, `:anchor`. |
+| `create_inline_pass(parent, text, opts={})` | Creates a passthrough `:quoted` inline node. |
+| `create_anchor(parent, text, opts={})` | Creates an `:anchor` inline node. |
+
+## Registration
+
+<Tabs>
+  <Tab title="Class">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      inline_macro BtnMacro           # name read from class
+      inline_macro BtnMacro, :btn     # explicit name
+    end
+    ```
+  </Tab>
+  <Tab title="Block DSL">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      inline_macro :btn do
+        process do |parent, target, attrs|
+          create_inline parent, :quoted, %(<kbd>#{target}</kbd>), type: :unquoted
+        end
+      end
+    end
+    ```
+  </Tab>
+  <Tab title="named + format">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      inline_macro do
+        named :label
+        format :short
+        resolve_attributes '1:text'
+        process do |parent, target, attrs|
+          create_inline_pass parent, %(<span class="label">#{attrs['text']}</span>)
+        end
+      end
+    end
+    ```
+  </Tab>
+</Tabs>
+
+## Example: temperature converter macro
+
+This example is taken directly from the Asciidoctor test suite. The `degrees` macro converts a Celsius value to the requested unit:
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class TemperatureMacro < Asciidoctor::Extensions::InlineMacroProcessor
+  use_dsl
+  named :degrees
+  resolve_attributes '1:units', 'precision=1'
+
+  def process parent, target, attributes
+    units     = attributes['units'] || (parent.document.attr 'temperature-unit', 'C')
+    precision = attributes['precision'].to_i
+    c         = target.to_f
+
+    case units
+    when 'C'
+      create_inline parent, :quoted, %(#{c.round precision} &#176;C), type: :unquoted
+    when 'F'
+      create_inline parent, :quoted, %(#{(c * 1.8 + 32).round precision} &#176;F), type: :unquoted
+    else
+      raise ArgumentError, %(Unknown temperature units: #{units})
+    end
+  end
+end
+
+Asciidoctor::Extensions.register do
+  inline_macro TemperatureMacro
+end
+```
+
+Usage in AsciiDoc:
+
+```asciidoc
+Water boils at degrees:100[units=C].
+Body temperature is degrees:37[F,precision=0].
+```
+
+`resolve_attributes '1:units', 'precision=1'` maps the first positional argument to `units` and sets the default value of `precision` to `1`.
+
+## Example: keyboard button macro
+
+```ruby
+class BtnMacro < Asciidoctor::Extensions::InlineMacroProcessor
+  use_dsl
+  named :btn
+  format :long
+
+  def process parent, target, attributes
+    create_inline parent, :quoted, %(<kbd>#{target}</kbd>), type: :unquoted
+  end
+end
+```
+
+Usage:
+
+```asciidoc
+Press btn:[Ctrl+S] to save.
+```
+
+## Example: short-format badge macro
+
+A short-format macro has no target — the bracket content provides everything:
+
+```ruby
+class BadgeMacro < Asciidoctor::Extensions::InlineMacroProcessor
+  use_dsl
+  named :badge
+  format :short
+  resolve_attributes '1:label', 'color=blue'
+
+  def process parent, target, attributes
+    label = attributes['label'] || 'badge'
+    color = attributes['color']
+    create_inline_pass parent,
+      %(<span class="badge badge--#{color}">#{label}</span>)
+  end
+end
+```
+
+Usage:
+
+```asciidoc
+Status: badge:[Stable,color=green]  badge:[Beta,color=orange]
+```
+
+<Note>
+  `create_inline` with `type: :unquoted` passes the text through without any additional substitutions. Use `create_inline_pass` when you want the text treated as raw passthrough HTML.
+</Note>
+
+<Warning>
+  The macro name must match the regular expression `[a-zA-Z][a-zA-Z0-9_-]*` — it cannot contain spaces or special characters.
+</Warning>

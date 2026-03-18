@@ -1,122 +1,119 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Asciidoctor",
+  "theme": "maple",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#df0949",
+    "light": "#f378a5",
+    "dark": "#0f77b4"
   },
-  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "https://media.brand.dev/ee9483b9-16e8-4f5e-a43b-3dd81a65cb8e.svg",
+    "dark": "https://media.brand.dev/ee9483b9-16e8-4f5e-a43b-3dd81a65cb8e.svg"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/asciidoctor/asciidoctor"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/asciidoctor/asciidoctor"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "install",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Using Asciidoctor",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "cli/usage",
+              "cli/options",
+              "api/usage",
+              "api/options",
+              "safe-modes"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Converters",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "converters/overview",
+              "converters/html5",
+              "converters/docbook5",
+              "converters/manpage"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Extensions",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "extensions/overview",
+              "extensions/preprocessor",
+              "extensions/block-processor",
+              "extensions/inline-macro-processor",
+              "extensions/tree-processor",
+              "extensions/postprocessor"
+            ]
+          },
+          {
+            "group": "Syntax Highlighting",
+            "pages": [
+              "syntax-highlighting/overview",
+              "syntax-highlighting/rouge",
+              "syntax-highlighting/highlight-js",
+              "syntax-highlighting/pygments"
+            ]
+          },
+          {
+            "group": "Migration",
+            "pages": [
+              "migrate/asciidoc-py",
+              "migrate/upgrade"
+            ]
+          },
+          {
+            "group": "Tooling & Ecosystem",
+            "pages": [
+              "tooling/overview",
+              "tooling/asciidoctorj",
+              "tooling/asciidoctorjs"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Core API",
             "pages": [
-              "api-reference/introduction"
+              "api/reference/module",
+              "api/reference/document",
+              "api/reference/section",
+              "api/reference/block",
+              "api/reference/inline"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Extensions API",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/reference/extensions-registry",
+              "api/reference/processor",
+              "api/reference/converter"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

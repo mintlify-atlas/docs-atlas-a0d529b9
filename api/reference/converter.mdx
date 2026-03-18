@@ -1,0 +1,238 @@
+---
+title: "Converter API"
+description: "Create custom output formats by implementing the Converter interface and registering it with Asciidoctor."
+---
+
+Asciidoctor converts a parsed document AST by walking the node tree and delegating each node to a `Converter`. A converter maps each node type (identified by its `node_name`) to a string of output markup. The `Asciidoctor::Converter` module defines the interface every converter must implement.
+
+## The `convert` method
+
+Every converter must implement a single method:
+
+```ruby
+convert(node, transform = nil, opts = nil)
+```
+
+<ParamField path="node" type="AbstractNode" required>
+  The AST node to convert. Can be a `Document`, `Section`, `Block`, or `Inline` instance.
+</ParamField>
+
+<ParamField path="transform" type="String">
+  A hint indicating which transformation to apply. When `nil`, the converter derives the transform from `node.node_name`. Common values: `'document'`, `'section'`, `'paragraph'`, `'listing'`, `'inline_quoted'`, and so on.
+</ParamField>
+
+<ParamField path="opts" type="Hash">
+  An optional hash of additional hints. May be `nil`.
+</ParamField>
+
+**Returns** `String` containing the converted output for this node.
+
+---
+
+## Creating a custom converter
+
+### Using `include Asciidoctor::Converter`
+
+Include the `Converter` module in your class, implement `convert`, and use `register_for` to bind your converter to one or more backend names.
+
+```ruby
+require 'asciidoctor'
+
+class TextConverter
+  include Asciidoctor::Converter
+
+  register_for 'text'
+
+  def initialize *args
+    super
+    outfilesuffix '.txt'
+  end
+
+  def convert node, transform = node.node_name, opts = nil
+    case transform
+    when 'document', 'section'
+      [node.title, node.content].join %(\n\n)
+    when 'paragraph'
+      (node.content.tr ?\n, ' ') << ?\n
+    else
+      # Handle inline nodes and unknown block types
+      (transform.start_with? 'inline_') ? node.text : node.content
+    end
+  end
+end
+
+puts Asciidoctor.convert_file 'sample.adoc', backend: :text, safe: :safe
+```
+
+### Extending a built-in converter
+
+You can subclass an existing converter to override only the nodes you need:
+
+```ruby
+require 'asciidoctor'
+
+class CustomHtml5Converter < (Asciidoctor::Converter.for 'html5')
+  register_for 'html5'
+
+  def convert_paragraph node
+    %(<p class="custom">#{node.content}</p>)
+  end
+end
+
+puts Asciidoctor.convert 'Hello, _World_!', safe: :safe
+```
+
+When subclassing the `html5` converter, method names follow the pattern `convert_<node_name>` (e.g., `convert_paragraph`, `convert_listing`, `convert_section`). This dispatch pattern is built into `Asciidoctor::Converter::Base`.
+
+---
+
+## Registering a converter
+
+### `register_for`
+
+The `register_for` class method (contributed by `Asciidoctor::Converter::Config`) registers a converter class with the default global registry for one or more backend names.
+
+```ruby
+register_for(*backends)
+```
+
+<ParamField path="backends" type="String | Symbol" required>
+  One or more backend name strings or symbols. The converter is associated with each name.
+</ParamField>
+
+```ruby
+class MyConverter
+  include Asciidoctor::Converter
+  register_for 'myformat'
+  # ...
+end
+```
+
+After registration, you can use your backend from the CLI:
+
+```bash
+asciidoctor -b myformat document.adoc
+```
+
+Or from the API:
+
+```ruby
+Asciidoctor.convert_file 'document.adoc', backend: 'myformat', safe: :safe
+```
+
+### `Converter.for`
+
+Look up the converter class registered for a given backend:
+
+```ruby
+Asciidoctor::Converter.for 'html5'
+# => Asciidoctor::Converter::Html5Converter
+
+Asciidoctor::Converter.for 'myformat'
+# => MyConverter
+```
+
+---
+
+## `handles?`
+
+The `handles?` method is consulted by `CompositeConverter` to determine whether a converter can handle a specific transform. The default implementation returns `true` for all transforms.
+
+```ruby
+handles?(transform)
+```
+
+<ParamField path="transform" type="String" required>
+  The `node_name` string of the node being converted.
+</ParamField>
+
+**Returns** `Boolean`.
+
+Override this method when composing multiple converters and you need to restrict which nodes each converter handles:
+
+```ruby
+class MathConverter
+  include Asciidoctor::Converter
+
+  def handles? transform
+    transform == 'stem' || transform.start_with?('inline_stem')
+  end
+
+  def convert node, transform = node.node_name, opts = nil
+    # render only STEM nodes
+  end
+end
+```
+
+---
+
+## Backend traits
+
+Your converter can declare output file traits using the `BackendTraits` module methods. These affect how Asciidoctor determines the output file suffix and how stylesheets are handled.
+
+```ruby
+class MyConverter
+  include Asciidoctor::Converter
+  include Asciidoctor::Converter::BackendTraits
+
+  register_for 'myformat'
+
+  def initialize backend, opts = {}
+    super
+    outfilesuffix '.txt'
+    filetype 'text'
+    basebackend 'text'
+  end
+
+  def convert node, transform = node.node_name, opts = nil
+    # ...
+  end
+end
+```
+
+| Method | Description |
+|--------|-------------|
+| `outfilesuffix(value)` | File extension for output files (e.g., `'.txt'`, `'.xml'`). |
+| `filetype(value)` | File type string (e.g., `'text'`, `'xml'`). |
+| `basebackend(value)` | Base backend name used for grouping (e.g., `'html'`, `'docbook'`). |
+| `htmlsyntax(value)` | HTML syntax variant: `'html'` or `'xml'`. Only relevant for HTML-based converters. |
+| `supports_templates` | Opt in to Tilt template support. |
+
+---
+
+## Converter factory
+
+The `Asciidoctor::Converter` module acts as a factory for creating converter instances.
+
+```ruby
+# Create an html5 converter instance
+converter = Asciidoctor::Converter.create 'html5'
+
+# Create with options (e.g., XHTML syntax)
+converter = Asciidoctor::Converter.create 'html5', htmlsyntax: 'xml'
+```
+
+### `Converter.create`
+
+```ruby
+Asciidoctor::Converter.create(backend, opts = {})
+```
+
+<ParamField path="backend" type="String" required>
+  The backend name.
+</ParamField>
+
+<ParamField path="opts" type="Hash">
+  Options passed to the converter constructor.
+
+  <Expandable title="options">
+    <ResponseField name=":template_dirs" type="Array<String>">
+      When provided, wraps the converter in a `CompositeConverter` that first tries Tilt templates.
+    </ResponseField>
+    <ResponseField name=":delegate_backend" type="String">
+      When using template dirs, the fallback backend for nodes not handled by a template.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+**Returns** a `Converter` instance.

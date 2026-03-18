@@ -1,0 +1,227 @@
+---
+title: "Asciidoctor::Inline"
+description: "Represents an inline element within a block, such as a formatted phrase, anchor, image, or macro result."
+---
+
+`Asciidoctor::Inline` represents an inline element in the document AST. Unlike blocks, inline nodes live within the text content of a paragraph or other block and are produced during the inline substitution phase. They inherit from `AbstractNode`.
+
+Inline nodes are most commonly encountered when writing `InlineMacroProcessor` extensions, where your `process` method receives a parent block and must return an `Inline` node (or a string).
+
+## Constructor
+
+```ruby
+Asciidoctor::Inline.new(parent, context, text = nil, opts = {})
+```
+
+<ParamField path="parent" type="AbstractBlock" required>
+  The parent block that contains this inline element.
+</ParamField>
+
+<ParamField path="context" type="Symbol" required>
+  The type of inline element. Common values: `:quoted`, `:anchor`, `:image`, `:indexterm`, `:break`.
+</ParamField>
+
+<ParamField path="text" type="String">
+  The text content of this inline element.
+</ParamField>
+
+<ParamField path="opts" type="Hash">
+  Options for configuring the inline node.
+
+  <Expandable title="options">
+    <ResponseField name=":type" type="Symbol">
+      The subtype qualifier for this inline node. For `:quoted` context, values include `:strong`, `:emphasis`, `:monospaced`, `:double`, `:single`, `:mark`, `:superscript`, `:subscript`. For `:anchor` context, values include `:xref`, `:link`, `:ref`, `:bibref`.
+    </ResponseField>
+    <ResponseField name=":target" type="String">
+      The target URI or anchor ID for link and anchor nodes.
+    </ResponseField>
+    <ResponseField name=":id" type="String">
+      The ID to assign to this inline node.
+    </ResponseField>
+    <ResponseField name=":attributes" type="Hash">
+      Attributes to assign to this inline node. If `subs` is specified, the converter applies those substitutions to the text.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+---
+
+## Attributes
+
+### `text`
+
+The text content of this inline element. Readable and writable.
+
+```ruby
+inline.text # => "Hello, World!"
+```
+
+**Type** `String | nil`.
+
+### `type`
+
+The subtype qualifier for this inline element. Read-only. See the constructor options above for common values.
+
+```ruby
+inline.type # => :strong
+```
+
+**Type** `Symbol | nil`.
+
+### `target`
+
+The target URI or anchor ID for link and anchor nodes. Readable and writable.
+
+```ruby
+inline.target # => "https://asciidoctor.org"
+```
+
+**Type** `String | nil`.
+
+### `id`
+
+The string ID assigned to this inline node. Readable and writable.
+
+```ruby
+inline.id # => "my-anchor"
+```
+
+**Type** `String | nil`.
+
+### `context`
+
+The Symbol context identifying the type of inline element. Inherited from `AbstractNode`.
+
+```ruby
+inline.context # => :quoted
+```
+
+**Type** `Symbol`.
+
+### `node_name`
+
+The string node name, constructed as `"inline_#{context}"` (e.g., `'inline_quoted'`, `'inline_anchor'`). Used by the converter for dispatch. Read-only.
+
+```ruby
+inline.node_name # => "inline_quoted"
+```
+
+**Type** `String`.
+
+### `attributes`
+
+Hash of attributes set on this inline node. Inherited from `AbstractNode`.
+
+```ruby
+inline.attributes # => { "role" => "badge" }
+```
+
+**Type** `Hash`.
+
+---
+
+## Methods
+
+### `attr`
+
+Retrieves the value of an attribute on this inline node. Inherited from `AbstractNode`.
+
+```ruby
+attr(name, default_value = nil, fallback_name = nil)
+```
+
+<ParamField path="name" type="String | Symbol" required>
+  Attribute name.
+</ParamField>
+
+<ParamField path="default_value" type="Object">
+  Returned when the attribute is not found.
+</ParamField>
+
+<ParamField path="fallback_name" type="String | Symbol">
+  Attribute to look up on the document if not found on this node.
+</ParamField>
+
+**Returns** `Object | nil`.
+
+### `alt`
+
+Returns the `alt` attribute value for inline image nodes. Returns an empty string when not set.
+
+```ruby
+inline.alt # => "company logo"
+```
+
+**Returns** `String`.
+
+### `convert`
+
+Converts this inline node using the document's converter.
+
+```ruby
+inline.convert
+```
+
+**Returns** `String`.
+
+### `content`
+
+Alias for `text`. Returns the primary content of this inline node.
+
+```ruby
+inline.content # => "Hello, World!"
+```
+
+**Returns** `String | nil`.
+
+### `inline?`
+
+Always returns `true` for `Inline` nodes.
+
+**Returns** `Boolean`.
+
+### `block?`
+
+Always returns `false` for `Inline` nodes.
+
+**Returns** `Boolean`.
+
+### `reftext`
+
+For reference nodes (`:ref` or `:bibref` type), returns the reference text by applying reftext substitutions to `text`. Returns `nil` for all other types.
+
+```ruby
+inline.reftext # => "Section 1"
+```
+
+**Returns** `String | nil`.
+
+---
+
+## Usage in extensions
+
+The most common use of `Asciidoctor::Inline` is as the return value from an `InlineMacroProcessor`. Use the `create_inline` helper method available on all `Processor` subclasses rather than calling `Inline.new` directly.
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+Asciidoctor::Extensions.register do
+  inline_macro :badge do
+    process do |parent, target, attrs|
+      # target is the macro target (e.g., badge:success[] => 'success')
+      create_inline parent, :quoted, target, type: :unquoted,
+        attributes: { 'role' => "badge badge-#{target}" }
+    end
+  end
+end
+```
+
+When your processor returns a string instead of an `Inline` node, Asciidoctor wraps it in an inline passthrough automatically.
+
+```ruby
+process do |parent, target, attrs|
+  # Return raw HTML as a string (also valid)
+  %(<span class="badge badge-#{target}">#{target}</span>)
+end
+```

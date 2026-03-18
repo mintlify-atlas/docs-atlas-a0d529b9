@@ -1,0 +1,154 @@
+---
+title: "Converters overview"
+description: "Understand how Asciidoctor converters transform a parsed AsciiDoc document tree into an output format, and learn which built-in and external converters are available."
+---
+
+A **converter** is the component responsible for transforming the abstract syntax tree (AST) produced by the Asciidoctor parser into a concrete output format such as HTML, DocBook XML, or groff-formatted man pages. After Asciidoctor parses an AsciiDoc source file, it walks the AST and calls the converter's `convert` method for each node. The converter returns a string fragment for that node; those fragments are assembled into the final output document.
+
+Every converter is bound to one or more **backend** names. Selecting a backend tells Asciidoctor which converter to instantiate for the current conversion run.
+
+## Built-in converters
+
+Asciidoctor ships with three converters that cover the most common output formats:
+
+| Backend name | Converter class | Output format | File extension |
+|---|---|---|---|
+| `html5` (default) | `Asciidoctor::Converter::Html5Converter` | HTML 5 | `.html` |
+| `docbook5` | `Asciidoctor::Converter::DocBook5Converter` | DocBook 5 XML | `.xml` |
+| `manpage` | `Asciidoctor::Converter::ManPageConverter` | groff/troff | `.man` (or `.<volnum>`) |
+
+<CardGroup cols={3}>
+  <Card title="HTML 5 converter" icon="code" href="/converters/html5">
+    The default converter. Produces styled, semantic HTML 5 ready for browsers.
+  </Card>
+  <Card title="DocBook 5 converter" icon="file-xml" href="/converters/docbook5">
+    Generates DocBook 5 XML for use with professional publishing toolchains.
+  </Card>
+  <Card title="Man page converter" icon="terminal" href="/converters/manpage">
+    Produces groff-formatted man pages for Unix-like systems.
+  </Card>
+</CardGroup>
+
+## Selecting a backend
+
+Use the `-b` (or `--backend`) flag on the CLI, or the `backend:` option in the Ruby API.
+
+<Tabs>
+  <Tab title="CLI">
+    ```bash
+    # HTML 5 is the default — no flag needed
+    asciidoctor document.adoc
+
+    # Explicitly select a backend
+    asciidoctor -b docbook5 document.adoc
+    asciidoctor -b manpage  document.adoc
+    ```
+  </Tab>
+  <Tab title="Ruby API">
+    ```ruby
+    require 'asciidoctor'
+
+    # HTML 5 is the default
+    Asciidoctor.convert_file 'document.adoc', safe: :safe
+
+    # Select a different backend
+    Asciidoctor.convert_file 'document.adoc', backend: 'docbook5', safe: :safe
+    Asciidoctor.convert_file 'document.adoc', backend: 'manpage',  safe: :safe
+    ```
+  </Tab>
+</Tabs>
+
+## Template converter
+
+In addition to the three compiled converters, Asciidoctor includes a **template converter** (`Asciidoctor::Converter::TemplateConverter`) that delegates conversion to template files written in any language supported by [Tilt](https://github.com/rtomayko/tilt) — ERB, Haml, Slim, and others.
+
+The template converter scans one or more directories for template files. The basename of each file (with extensions stripped) is used as the transform key. For example, a file named `paragraph.html.slim` handles the `paragraph` transform when converting to HTML.
+
+```bash
+# Use custom templates stored in ./templates
+asciidoctor -T ./templates document.adoc
+```
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  template_dirs: ['./templates'],
+  safe: :safe
+```
+
+<Tip>
+You can mix the template converter with a built-in converter. Any transform handled by a template file takes precedence; remaining transforms fall back to the built-in converter.
+</Tip>
+
+## Creating a custom converter
+
+To implement a converter for a new output format, include the `Asciidoctor::Converter` module in your class and implement the `convert` method. Alternatively, subclass `Asciidoctor::Converter::Base` and define individual `convert_<transform>` dispatch methods.
+
+```ruby
+require 'asciidoctor'
+
+class TextConverter
+  include Asciidoctor::Converter
+  register_for 'text'
+
+  def initialize *args
+    super
+    outfilesuffix '.txt'
+  end
+
+  def convert node, transform = node.node_name, opts = nil
+    case transform
+    when 'document', 'section'
+      [node.title, node.content].join %(\n\n)
+    when 'paragraph'
+      (node.content.tr ?\n, ' ') << ?\n
+    else
+      (transform.start_with? 'inline_') ? node.text : node.content
+    end
+  end
+end
+
+puts Asciidoctor.convert_file 'document.adoc', backend: :text, safe: :safe
+```
+
+You can also subclass an existing built-in converter to override only specific transforms:
+
+```ruby
+require 'asciidoctor'
+
+# Override paragraph rendering in the HTML 5 converter
+class MyHtml5Converter < (Asciidoctor::Converter.for 'html5')
+  register_for 'html5'
+
+  def convert_paragraph node
+    %(<p class="custom">#{node.content}</p>)
+  end
+end
+
+puts Asciidoctor.convert_file 'document.adoc', safe: :safe
+```
+
+Call `register_for` with one or more backend name strings to bind your converter to those backends. Asciidoctor's converter factory will then select your converter whenever the matching backend is requested.
+
+## External converters
+
+The Asciidoctor ecosystem provides additional converters as separate gems:
+
+| Gem | Backend | Output format |
+|---|---|---|
+| [asciidoctor-pdf](https://github.com/asciidoctor/asciidoctor-pdf) | `pdf` | PDF (via Prawn) |
+| [asciidoctor-epub3](https://github.com/asciidoctor/asciidoctor-epub3) | `epub3` | EPUB 3 |
+| [asciidoctor-revealjs](https://github.com/asciidoctor/asciidoctor-reveal.js) | `revealjs` | reveal.js HTML slides |
+
+Install the gem and require it before calling Asciidoctor to make the converter available:
+
+```bash
+gem install asciidoctor-pdf
+asciidoctor -r asciidoctor-pdf -b pdf document.adoc
+```
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor-pdf'
+
+Asciidoctor.convert_file 'document.adoc', backend: 'pdf', safe: :safe
+```

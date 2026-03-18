@@ -1,0 +1,135 @@
+---
+title: "Syntax Highlighting"
+description: "Enable syntax highlighting in Asciidoctor using Rouge, highlight.js, or Pygments to colorize source code blocks in your documents."
+keywords: ["syntax highlighting", "source highlighter", "rouge", "highlight.js", "pygments", "source blocks"]
+---
+
+Asciidoctor can apply syntax highlighting to [source blocks](https://docs.asciidoctor.org/asciidoc/latest/verbatim/source-blocks/) — listing blocks that contain code snippets intended to be colorized. You enable this by setting the `source-highlighter` document attribute to the name of one of the built-in adapters.
+
+Here is a simple source block in AsciiDoc:
+
+```asciidoc
+[source,ruby]
+----
+puts "Hello, World!"
+----
+```
+
+When a language is specified on a listing block, the `source` style is implied and can be omitted:
+
+```asciidoc
+[,ruby]
+----
+puts "Hello, World!"
+----
+```
+
+## Enabling a syntax highlighter
+
+You can enable a syntax highlighter in three ways:
+
+<Tabs>
+  <Tab title="Document header">
+    Set the attribute in the header of your AsciiDoc file:
+
+    ```asciidoc
+    :source-highlighter: rouge
+    ```
+  </Tab>
+  <Tab title="CLI">
+    Pass the attribute when invoking the Asciidoctor CLI:
+
+    ```bash
+    asciidoctor -a source-highlighter=rouge document.adoc
+    ```
+  </Tab>
+  <Tab title="Ruby API">
+    Pass the attribute through the API options hash:
+
+    ```ruby
+    Asciidoctor.convert_file 'document.adoc',
+      safe: :safe,
+      attributes: { 'source-highlighter' => 'rouge' }
+    ```
+  </Tab>
+</Tabs>
+
+## Highlighter types
+
+Asciidoctor supports two types of syntax highlighters: **build-time** and **client-side**. They differ in when and where the highlighting occurs.
+
+### Build-time highlighters
+
+Build-time highlighters (Rouge and Pygments) perform syntax highlighting during AsciiDoc conversion — on the server, before the document is delivered.
+
+Asciidoctor invokes the highlighter directly, hides callout markers from it so they are not mangled, then puts them back in the correct position after highlighting. The output contains the already-highlighted tokens wrapped in `<span>` elements styled either by CSS classes or inline styles.
+
+Build-time highlighters support more features because Asciidoctor has full control over the process:
+
+- Line numbering (`linenums` option)
+- Line highlighting (the `highlight` block attribute)
+- Callout preservation
+- Stylesheet generation and linking
+
+The trade-off is that build-time highlighting requires an extra gem to be installed, slows down conversion slightly, and produces larger output files.
+
+### Client-side highlighters
+
+Client-side highlighters (highlight.js) run in the browser as the page loads. Asciidoctor does not invoke the highlighter itself — it injects the necessary `<link>` and `<script>` tags so the browser can load and execute the library.
+
+Asciidoctor passes the contents of each source block through to the HTML output unchanged and annotates the `<code>` element with the source language so the browser-side library knows what to highlight.
+
+<Warning>
+Because callout numbers are passed through to the HTML as-is, a client-side highlighter may treat them as part of the source code, which can produce unexpected results or confuse the highlighter.
+</Warning>
+
+The benefit of a client-side highlighter is that it requires no extra gems, keeps conversion fast, and produces smaller output because the highlighted result is generated at page load time rather than embedded in the HTML.
+
+### Comparison
+
+| | Rouge | highlight.js | Pygments |
+|---|---|---|---|
+| Type | Build-time | Client-side | Build-time |
+| Required gem | `rouge` (>= 2) | _none_ | `pygments.rb` (>= 1.2) |
+| Requires Python | No | No | Yes |
+| Line numbers | Yes | No | Yes |
+| Line highlighting | Yes | No | Yes |
+| Callout support | Yes | Partial | Yes |
+
+<Note>
+Asciidoctor does not apply syntax highlighting when generating DocBook output. The DocBook toolchain is expected to handle highlighting of `<programlisting>` elements downstream.
+</Note>
+
+## Built-in highlighters
+
+<CardGroup cols={3}>
+  <Card title="Rouge" icon="gem" href="/syntax-highlighting/rouge">
+    A pure-Ruby highlighter with no external dependencies. The recommended choice for most Asciidoctor projects.
+  </Card>
+  <Card title="highlight.js" icon="code" href="/syntax-highlighting/highlight-js">
+    A client-side JavaScript highlighter. No gem or server-side processing required.
+  </Card>
+  <Card title="Pygments" icon="snake" href="/syntax-highlighting/pygments">
+    A Python-based highlighter with broad language coverage, bridged to Ruby via the `pygments.rb` gem.
+  </Card>
+</CardGroup>
+
+## Custom substitutions on source blocks
+
+Do not mix syntax highlighting with AsciiDoc text formatting substitutions such as `quotes` or `macros`. These two operations are mutually exclusive in most converters.
+
+<Warning>
+Adding AsciiDoc formatting markup (for example, `subs=+quotes`) to a source block can confuse the syntax highlighter and produce broken output, especially when converting to non-HTML formats such as PDF.
+</Warning>
+
+If you need to substitute attribute references inside a source block, limit substitutions to `attributes`:
+
+```asciidoc
+[,java,subs=attributes+]
+----
+interface {model}Repository extends CrudRepository<{model},Long> {
+
+  {model} findById(long id);
+}
+----
+```

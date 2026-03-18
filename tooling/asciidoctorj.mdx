@@ -1,0 +1,266 @@
+---
+title: "AsciidoctorJ"
+description: "Use Asciidoctor from the JVM. AsciidoctorJ packages the Asciidoctor Ruby gem for Java, Kotlin, Groovy, and other JVM languages via JRuby."
+keywords: ["asciidoctorj", "jvm", "java", "kotlin", "groovy", "maven", "gradle", "jruby"]
+---
+
+AsciidoctorJ is the official library for running Asciidoctor on the Java Virtual Machine. It embeds JRuby and the Asciidoctor Ruby gem so that you can convert AsciiDoc documents from any JVM language without installing Ruby.
+
+<Note>
+  AsciidoctorJ requires Java 8 or later. It bundles JRuby internally — you do not need a separate Ruby or JRuby installation.
+</Note>
+
+## Installation
+
+<Tabs>
+  <Tab title="Maven">
+    Add the dependency to your `pom.xml`:
+
+    ```xml pom.xml
+    <dependency>
+      <groupId>org.asciidoctor</groupId>
+      <artifactId>asciidoctorj</artifactId>
+      <version>3.0.0</version>
+    </dependency>
+    ```
+  </Tab>
+  <Tab title="Gradle (Groovy DSL)">
+    Add the dependency to your `build.gradle`:
+
+    ```groovy build.gradle
+    dependencies {
+        implementation 'org.asciidoctor:asciidoctorj:3.0.0'
+    }
+    ```
+  </Tab>
+  <Tab title="Gradle (Kotlin DSL)">
+    Add the dependency to your `build.gradle.kts`:
+
+    ```kotlin build.gradle.kts
+    dependencies {
+        implementation("org.asciidoctor:asciidoctorj:3.0.0")
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Basic usage
+
+### Convert a string
+
+<CodeGroup>
+
+```java Java
+import org.asciidoctor.Asciidoctor;
+import org.asciidoctor.Options;
+
+public class ConvertExample {
+    public static void main(String[] args) {
+        try (Asciidoctor asciidoctor = Asciidoctor.Factory.create()) {
+            String html = asciidoctor.convert(
+                "Hello, *World*!",
+                Options.builder().build()
+            );
+            System.out.println(html);
+        }
+    }
+}
+```
+
+```kotlin Kotlin
+import org.asciidoctor.Asciidoctor
+import org.asciidoctor.Options
+
+fun main() {
+    Asciidoctor.Factory.create().use { asciidoctor ->
+        val html = asciidoctor.convert(
+            "Hello, *World*!",
+            Options.builder().build()
+        )
+        println(html)
+    }
+}
+```
+
+```groovy Groovy
+import org.asciidoctor.Asciidoctor
+import org.asciidoctor.Options
+
+def asciidoctor = Asciidoctor.Factory.create()
+String html = asciidoctor.convert('Hello, *World*!', Options.builder().build())
+println html
+asciidoctor.close()
+```
+
+</CodeGroup>
+
+### Convert a file
+
+```java Java
+import org.asciidoctor.Asciidoctor;
+import org.asciidoctor.Options;
+import org.asciidoctor.SafeMode;
+import java.io.File;
+
+try (Asciidoctor asciidoctor = Asciidoctor.Factory.create()) {
+    Options options = Options.builder()
+        .safe(SafeMode.UNSAFE)
+        .toFile(new File("output.html"))
+        .build();
+    asciidoctor.convertFile(new File("document.adoc"), options);
+}
+```
+
+### Set document attributes
+
+```java Java
+import org.asciidoctor.Asciidoctor;
+import org.asciidoctor.Attributes;
+import org.asciidoctor.Options;
+
+try (Asciidoctor asciidoctor = Asciidoctor.Factory.create()) {
+    Attributes attributes = Attributes.builder()
+        .attribute("toc", "left")
+        .attribute("source-highlighter", "rouge")
+        .attribute("doctype", "book")
+        .build();
+
+    Options options = Options.builder()
+        .attributes(attributes)
+        .build();
+
+    String html = asciidoctor.convert("= My Document\n\nContent.", options);
+}
+```
+
+## Backend selection
+
+Pass a backend name in `Options` to select the output format:
+
+```java Java
+import org.asciidoctor.Asciidoctor;
+import org.asciidoctor.Options;
+
+try (Asciidoctor asciidoctor = Asciidoctor.Factory.create()) {
+    // DocBook 5 output
+    Options options = Options.builder()
+        .backend("docbook5")
+        .build();
+
+    String docbook = asciidoctor.convert("= My Document\n\nContent.", options);
+}
+```
+
+## Extensions
+
+AsciidoctorJ exposes the Asciidoctor extension API in Java. Register extensions using `ExtensionGroup` or the `JavaExtensionRegistry`:
+
+```java Java
+import org.asciidoctor.Asciidoctor;
+import org.asciidoctor.Options;
+import org.asciidoctor.extension.JavaExtensionRegistry;
+
+try (Asciidoctor asciidoctor = Asciidoctor.Factory.create()) {
+    JavaExtensionRegistry registry = asciidoctor.javaExtensionRegistry();
+    registry.postprocessor(MyPostprocessor.class);
+
+    String html = asciidoctor.convert("Hello, *World*!", Options.builder().build());
+}
+```
+
+## AsciidoctorJ PDF
+
+To produce PDF output from Java, add the `asciidoctorj-pdf` artifact:
+
+<Tabs>
+  <Tab title="Maven">
+    ```xml pom.xml
+    <dependency>
+      <groupId>org.asciidoctor</groupId>
+      <artifactId>asciidoctorj-pdf</artifactId>
+      <version>2.3.19</version>
+    </dependency>
+    ```
+  </Tab>
+  <Tab title="Gradle">
+    ```groovy build.gradle
+    dependencies {
+        implementation 'org.asciidoctor:asciidoctorj-pdf:2.3.19'
+    }
+    ```
+  </Tab>
+</Tabs>
+
+Then convert with the `pdf` backend:
+
+```java Java
+import org.asciidoctor.Asciidoctor;
+import org.asciidoctor.Options;
+import org.asciidoctor.SafeMode;
+import java.io.File;
+
+try (Asciidoctor asciidoctor = Asciidoctor.Factory.create()) {
+    Options options = Options.builder()
+        .backend("pdf")
+        .safe(SafeMode.UNSAFE)
+        .toFile(new File("output.pdf"))
+        .build();
+    asciidoctor.convertFile(new File("document.adoc"), options);
+}
+```
+
+## AsciidoctorJ EPUB3
+
+Similarly, add `asciidoctorj-epub3` and use the `epub3` backend:
+
+<Tabs>
+  <Tab title="Maven">
+    ```xml pom.xml
+    <dependency>
+      <groupId>org.asciidoctor</groupId>
+      <artifactId>asciidoctorj-epub3</artifactId>
+      <version>2.1.3</version>
+    </dependency>
+    ```
+  </Tab>
+  <Tab title="Gradle">
+    ```groovy build.gradle
+    dependencies {
+        implementation 'org.asciidoctor:asciidoctorj-epub3:2.1.3'
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Build tool plugins
+
+For Maven and Gradle projects, use the dedicated plugins instead of calling the API directly:
+
+<CardGroup cols={2}>
+  <Card
+    title="Asciidoctor Maven Plugin"
+    icon="hammer"
+    href="https://docs.asciidoctor.org/maven-tools/latest/"
+  >
+    Integrates AsciiDoc conversion into the Maven build lifecycle. Configure backends, attributes, and source directories in `pom.xml`.
+  </Card>
+  <Card
+    title="Asciidoctor Gradle Plugin"
+    icon="gear"
+    href="https://asciidoctor.github.io/asciidoctor-gradle-plugin/"
+  >
+    Adds `asciidoctor` tasks to the Gradle build. Supports all backends and AsciidoctorJ extensions.
+  </Card>
+</CardGroup>
+
+## Thread safety
+
+<Warning>
+  Each `Asciidoctor` instance is not thread-safe. Create a separate instance per thread, or use a pool. Always close instances when finished to release JRuby resources — use try-with-resources in Java or `use {}` in Kotlin.
+</Warning>
+
+## Resources
+
+- [AsciidoctorJ documentation](https://docs.asciidoctor.org/asciidoctorj/latest/)
+- [AsciidoctorJ on GitHub](https://github.com/asciidoctor/asciidoctorj)
+- [AsciidoctorJ on Maven Central](https://search.maven.org/artifact/org.asciidoctor/asciidoctorj)

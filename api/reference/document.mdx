@@ -1,0 +1,334 @@
+---
+title: "Asciidoctor::Document"
+description: "The root node of a parsed AsciiDoc document, providing access to the document tree, attributes, and metadata."
+---
+
+`Asciidoctor::Document` is the root of the abstract syntax tree (AST) produced by the parser. It inherits from `AbstractBlock`, giving it access to the full block tree, and adds document-level state such as attributes, safe mode, and the document catalog.
+
+You obtain a `Document` instance by calling `Asciidoctor.load`, `Asciidoctor.load_file`, or `Asciidoctor.convert` (when the output is written to a file).
+
+```ruby
+doc = Asciidoctor.load '= My Title\nAuthor Name\n\nContent.', safe: :safe
+# => Asciidoctor::Document { doctype: "article", doctitle: "My Title", blocks: 1 }
+```
+
+## Attributes and state
+
+### `safe`
+
+Read-only integer indicating the safe mode level in effect for this document.
+
+```ruby
+doc.safe # => 1  (Asciidoctor::SafeMode::SAFE)
+```
+
+### `backend`
+
+Read-only string containing the cached value of the `backend` attribute.
+
+```ruby
+doc.backend # => "html5"
+```
+
+### `doctype`
+
+Read-only string containing the cached value of the `doctype` attribute.
+
+```ruby
+doc.doctype # => "article"
+```
+
+### `sourcemap`
+
+Boolean flag indicating whether the parser is tracking source location for each block. Controlled by the `:sourcemap` option.
+
+```ruby
+doc = Asciidoctor.load source, safe: :safe, sourcemap: true
+doc.sourcemap # => true
+```
+
+### `compat_mode`
+
+Read-only boolean. When `true`, AsciiDoc compatibility mode is active, which changes several inline syntax rules.
+
+```ruby
+doc.compat_mode # => false
+```
+
+### `attributes`
+
+Read-only `Hash` of all document attributes resolved after parsing the header.
+
+```ruby
+doc.attributes['toc-title'] # => "Table of Contents"
+doc.attributes['sectnums']  # => ""  (set flag)
+```
+
+### `base_dir`
+
+Read-only string. The base directory used to resolve relative paths. Defaults to the directory of the source file, or the current directory when parsing a string.
+
+```ruby
+doc.base_dir # => "/home/user/docs"
+```
+
+### `catalog`
+
+Read-only `Hash` containing the document catalog built during parsing.
+
+```ruby
+doc.catalog[:refs]      # => Hash of all anchor IDs => nodes
+doc.catalog[:links]     # => Array of external link URLs
+doc.catalog[:images]    # => Array of image references
+doc.catalog[:footnotes] # => Array of Footnote structs
+```
+
+### `header`
+
+Read-only reference to the level-0 `Section` representing the document header, or `nil` if no header was found.
+
+```ruby
+doc.header.title # => "My Document Title"
+```
+
+### `options`
+
+Read-only frozen `Hash` of the resolved options used to initialize this document.
+
+```ruby
+doc.options[:safe] # => 1
+```
+
+### `converter`
+
+Read-only reference to the `Converter` instance associated with this document.
+
+### `extensions`
+
+Read-only reference to the activated `Extensions::Registry` for this document, or `nil` if no extensions are registered.
+
+---
+
+## Methods
+
+### `doctitle`
+
+Resolves the primary title for the document by searching in order: the `title` document attribute, the header title, then the title of the first section.
+
+```ruby
+doctitle(opts = {})
+```
+
+<ParamField path="opts" type="Hash">
+  <Expandable title="options">
+    <ResponseField name=":use_fallback" type="Boolean">
+      When `true`, returns the value of the `untitled-label` attribute if no title can be found. Defaults to `false`.
+    </ResponseField>
+    <ResponseField name=":partition" type="Boolean | String">
+      When truthy, parses the title into a `Document::Title` struct with `main` and `subtitle` parts. Pass `true` to use the value of the `title-separator` attribute as the delimiter.
+    </ResponseField>
+    <ResponseField name=":sanitize" type="Boolean">
+      Strip XML elements from the resolved title string.
+    </ResponseField>
+  </Expandable>
+</ParamField>
+
+**Returns** `String`, `Document::Title`, or `nil`.
+
+```ruby
+doc.doctitle
+# => "My Document Title"
+
+doc.doctitle use_fallback: true
+# => "Untitled"  (when no title is defined)
+
+doc.doctitle partition: true
+# => #<Document::Title main="My Document" subtitle="A Subtitle">
+```
+
+### `title=`
+
+Sets the title on the document header. Creates the header section if it does not yet exist.
+
+```ruby
+title=(title)
+```
+
+<ParamField path="title" type="String" required>
+  The title string to assign.
+</ParamField>
+
+**Returns** `String`.
+
+### `author`
+
+Convenience method returning the value of the `author` document attribute.
+
+```ruby
+doc.author # => "Author Name"
+```
+
+**Returns** `String | nil`.
+
+### `authors`
+
+Returns all authors declared in the document header as an `Array` of `Author` structs.
+
+```ruby
+doc.authors
+# => [#<struct Author name="Author Name", firstname="Author", ...>]
+```
+
+Each `Author` struct has the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | String | Full name |
+| `firstname` | String | First name |
+| `middlename` | String | Middle name or initial |
+| `lastname` | String | Last name |
+| `initials` | String | Author initials |
+| `email` | String | Email address |
+
+**Returns** `Array<Author>`.
+
+### `revdate`
+
+Convenience method returning the value of the `revdate` document attribute.
+
+```ruby
+doc.revdate # => "2024-01-15"
+```
+
+**Returns** `String | nil`.
+
+### `attr`
+
+Retrieves the value of a document attribute. Inherited from `AbstractNode`.
+
+```ruby
+attr(name, default_value = nil, fallback_name = nil)
+```
+
+<ParamField path="name" type="String | Symbol" required>
+  The attribute name to look up.
+</ParamField>
+
+<ParamField path="default_value" type="Object">
+  Value to return when the attribute is not found. Defaults to `nil`.
+</ParamField>
+
+<ParamField path="fallback_name" type="String | Symbol">
+  Alternative attribute name to look up on the document node if the primary name is not found on this node. Pass `true` to reuse the same name.
+</ParamField>
+
+**Returns** `Object` (typically `String`) or `default_value`.
+
+```ruby
+doc.attr 'toc-title'                # => "Table of Contents"
+doc.attr 'missing', 'default-val'   # => "default-val"
+doc.attr 'uri-project'              # => "https://asciidoctor.org"
+```
+
+### `attr?`
+
+Tests whether a document attribute is set. Optionally compares its value against an expected value. Inherited from `AbstractNode`.
+
+```ruby
+attr?(name, expected_value = nil, fallback_name = nil)
+```
+
+<ParamField path="name" type="String | Symbol" required>
+  The attribute name to check.
+</ParamField>
+
+<ParamField path="expected_value" type="Object">
+  When provided, returns `true` only if the attribute value equals this value.
+</ParamField>
+
+<ParamField path="fallback_name" type="String | Symbol">
+  Alternative attribute name to check on the document if not found on this node.
+</ParamField>
+
+**Returns** `Boolean`.
+
+```ruby
+doc.attr? 'toc'      # => true  (attribute is set)
+doc.attr? 'icons'    # => false (attribute not set)
+doc.attr? 'sectnums', '' # => true  (attribute is set to empty string)
+```
+
+### `sections`
+
+Returns the top-level `Section` nodes contained in this document. These are the direct children of the document that have context `:section`.
+
+```ruby
+doc.sections
+# => [#<Asciidoctor::Section ...>, ...]
+
+doc.sections.each do |section|
+  puts "#{section.level}: #{section.title}"
+end
+```
+
+**Returns** `Array<Section>`.
+
+### `blocks`
+
+Returns all direct child blocks of the document, including sections and content blocks.
+
+```ruby
+doc.blocks
+# => [#<Asciidoctor::Section ...>, #<Asciidoctor::Block ...>]
+
+doc.blocks.map(&:context)
+# => [:section, :paragraph, :sidebar]
+```
+
+**Returns** `Array<AbstractBlock>`.
+
+### `convert`
+
+Converts the document using the associated converter and returns the result as a `String`.
+
+```ruby
+doc.convert
+```
+
+**Returns** `String`.
+
+```ruby
+doc = Asciidoctor.load source, safe: :safe
+html = doc.convert
+puts html
+```
+
+### `find_by`
+
+Searches the document tree and returns all nodes matching the given criteria. Inherited from `AbstractBlock`.
+
+```ruby
+doc.find_by(context: :paragraph)
+doc.find_by(style: 'source')
+doc.find_by(context: :section) {|s| s.level == 2 }
+```
+
+**Returns** `Array<AbstractBlock>`.
+
+```ruby
+# Find all source code blocks
+source_blocks = doc.find_by(context: :listing, style: 'source')
+source_blocks.each do |block|
+  puts block.attr('language')
+end
+```
+
+### `first_section`
+
+Returns the first top-level section, which is either the header section or the first block with context `:section`.
+
+```ruby
+doc.first_section
+```
+
+**Returns** `Section | nil`.

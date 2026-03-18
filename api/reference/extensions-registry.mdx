@@ -1,0 +1,271 @@
+---
+title: "Extensions::Registry"
+description: "Registers and manages Asciidoctor extension processors that participate in parsing and conversion."
+---
+
+`Asciidoctor::Extensions::Registry` holds all extension processors registered for a given Asciidoctor processing run. You interact with the registry through the `Asciidoctor::Extensions.register` class method, or by passing a registry instance directly to `Asciidoctor.convert` via the `:extensions` option.
+
+Extensions participate in processing at the following stages:
+
+1. **Preprocessors** — modify source lines before parsing begins.
+2. **IncludeProcessors** — handle `include::[]` directives for custom targets.
+3. **BlockProcessors / BlockMacroProcessors** — handle custom block and block macro syntax during parsing.
+4. **TreeProcessors** — run on the complete AST after parsing.
+5. **InlineMacroProcessors** — handle custom inline macro syntax during conversion.
+6. **Postprocessors** — modify the converted output string.
+7. **DocinfoProcessors** — inject content into the document header or footer.
+
+## Global registration
+
+The most common pattern registers extensions globally so they apply to every document processed after registration:
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+Asciidoctor::Extensions.register do
+  block_macro :gist do
+    process do |parent, target, attrs|
+      create_pass_block parent,
+        %(<script src="https://gist.github.com/#{target}.js"></script>),
+        {}, content_model: :raw
+    end
+  end
+end
+```
+
+## Per-call registration
+
+You can pass a registry instance to a single `convert` call to avoid affecting other calls:
+
+```ruby
+registry = Asciidoctor::Extensions::Registry.new
+registry.block_macro :gist do
+  process do |parent, target, attrs|
+    # ...
+  end
+end
+
+Asciidoctor.convert source, safe: :safe, extensions: registry
+```
+
+---
+
+## Registration methods
+
+### `preprocessor`
+
+Registers a `Preprocessor` that receives the source lines before parsing.
+
+```ruby
+preprocessor(*args, &block)
+```
+
+The processor's `process` method receives `(document, reader)` and must return the `Reader` (or `nil`).
+
+```ruby
+# Class-based
+preprocessor MyPreprocessor
+
+# Block-based
+preprocessor do
+  process do |doc, reader|
+    reader.lines.map! {|line| line.gsub 'foo', 'bar' }
+    reader
+  end
+end
+```
+
+### `include_processor`
+
+Registers an `IncludeProcessor` that handles `include::[]` directives for targets it claims to handle.
+
+```ruby
+include_processor(*args, &block)
+```
+
+The processor must implement `handles?(target)` and `process(document, reader, target, attributes)`.
+
+```ruby
+include_processor do
+  process do |doc, reader, target, attrs|
+    reader.push_include 'substituted content', target, target, 1, attrs
+  end
+end
+```
+
+### `tree_processor`
+
+Registers a `TreeProcessor` that runs on the complete document AST after parsing.
+
+```ruby
+tree_processor(*args, &block)
+```
+
+The processor's `process` method receives the `Document` and must return `nil` or the document.
+
+```ruby
+# Class-based
+tree_processor ShellTreeProcessor
+
+# Block-based
+tree_processor do
+  process do |document|
+    document.find_by(context: :listing, style: 'source').each do |block|
+      # transform source blocks
+    end
+    nil
+  end
+end
+```
+
+### `postprocessor`
+
+Registers a `Postprocessor` that receives the converted output string after all conversion is complete.
+
+```ruby
+postprocessor(*args, &block)
+```
+
+The processor's `process` method receives `(document, output)` and must return the (possibly modified) output string.
+
+```ruby
+postprocessor do
+  process do |doc, output|
+    output.gsub '<body', '<body data-version="1.0"'
+  end
+end
+```
+
+### `block`
+
+Registers a `BlockProcessor` for custom block or delimited block content annotated with the given name.
+
+```ruby
+block(*args, &block)
+```
+
+<ParamField path="args[0]" type="Symbol | String | Class">
+  The block name (a Symbol coerced from the AsciiDoc style name), a `BlockProcessor` class or instance, or a string class name. When passing a class, the name is read from its `name` config option.
+</ParamField>
+
+The processor's `process` method receives `(parent, reader, attributes)` and must return a `Block` or `nil`.
+
+```ruby
+# Class-based with explicit name
+block ShoutBlock, :shout
+
+# Block-based
+block do
+  named :shout
+  on_contexts :paragraph, :open
+  process do |parent, reader, attrs|
+    lines = reader.read_lines.map(&:upcase)
+    create_paragraph parent, lines, attrs
+  end
+end
+
+# Block-based with explicit name as first argument
+block :shout do
+  process do |parent, reader, attrs|
+    create_paragraph parent, reader.read_lines.map(&:upcase), attrs
+  end
+end
+```
+
+### `block_macro`
+
+Registers a `BlockMacroProcessor` for a custom block macro with the given name.
+
+```ruby
+block_macro(*args, &block)
+```
+
+The processor's `process` method receives `(parent, target, attributes)` and must return a block node.
+
+```ruby
+# Class-based
+block_macro GistBlockMacro, :gist
+
+# Block-based
+block_macro :gist do
+  process do |parent, target, attrs|
+    create_pass_block parent,
+      %(<script src="https://gist.github.com/#{target}.js"></script>),
+      {}, content_model: :raw
+  end
+end
+```
+
+### `inline_macro`
+
+Registers an `InlineMacroProcessor` for a custom inline macro with the given name.
+
+```ruby
+inline_macro(*args, &block)
+```
+
+The processor's `process` method receives `(parent, target, attributes)` and must return an `Inline` node or a string.
+
+```ruby
+# Class-based
+inline_macro ChromeInlineMacro, :chrome
+
+# Block-based
+inline_macro :badge do
+  process do |parent, target, attrs|
+    create_inline parent, :quoted, target,
+      type: :unquoted,
+      attributes: { 'role' => "badge badge-#{target}" }
+  end
+end
+```
+
+### `docinfo_processor`
+
+Registers a `DocinfoProcessor` that injects content into the document `<head>` or footer.
+
+```ruby
+docinfo_processor(*args, &block)
+```
+
+```ruby
+docinfo_processor do
+  process do |doc|
+    at_location :head
+    '<meta name="robots" content="noindex">'
+  end
+end
+```
+
+---
+
+## Querying the registry
+
+Each registration method has a corresponding predicate and retrieval method:
+
+```ruby
+registry.preprocessors?           # => Boolean
+registry.preprocessors            # => Array<Extension> or nil
+
+registry.tree_processors?         # => Boolean
+registry.tree_processors          # => Array<Extension> or nil
+
+registry.postprocessors?          # => Boolean
+registry.postprocessors           # => Array<Extension> or nil
+
+registry.include_processors?      # => Boolean
+registry.include_processors       # => Array<Extension> or nil
+
+registry.blocks?                  # => Boolean
+registry.registered_for_block? :shout, :paragraph  # => Extension | false
+registry.find_block_extension :shout                # => Extension | nil
+
+registry.block_macros?            # => Boolean
+registry.registered_for_block_macro? :gist          # => Extension | false
+registry.find_block_macro_extension :gist           # => Extension | nil
+
+registry.inline_macros?           # => Boolean
+registry.registered_for_inline_macro? :badge        # => Extension | false
+registry.find_inline_macro_extension :badge         # => Extension | nil
+```

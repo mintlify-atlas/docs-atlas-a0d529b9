@@ -1,0 +1,103 @@
+---
+title: "Introduction"
+description: "A fast, open source text processor and publishing toolchain for converting AsciiDoc content to HTML 5, DocBook 5, man pages, and other formats."
+---
+
+<img
+  src="https://media.brand.dev/ee9483b9-16e8-4f5e-a43b-3dd81a65cb8e.svg"
+  alt="Asciidoctor"
+  style={{ height: "60px", marginBottom: "1.5rem" }}
+/>
+
+# Welcome to Asciidoctor
+
+Asciidoctor is a fast, open source, Ruby-based text processor for parsing AsciiDoc® into a document model and converting it to output formats such as HTML 5, DocBook 5, manual pages, PDF, EPUB 3, and other formats.
+
+AsciiDoc is the language. Asciidoctor is the processor.
+
+<CardGroup cols={2}>
+  <Card title="Install Asciidoctor" icon="download" href="/install">
+    Get up and running with gem, Homebrew, Docker, or your system package manager.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Convert your first AsciiDoc document to HTML in under 5 minutes.
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/usage">
+    Use the `asciidoctor` command to convert documents from your terminal.
+  </Card>
+  <Card title="Ruby API" icon="code" href="/api/usage">
+    Integrate Asciidoctor into your Ruby application programmatically.
+  </Card>
+</CardGroup>
+
+## What is AsciiDoc?
+
+AsciiDoc is a lightweight markup language for writing technical content. It is designed to be readable in raw form while also being convertible to publication-ready output formats. Asciidoctor is the successor to AsciiDoc.py and implements the AsciiDoc language.
+
+```asciidoc
+= My Document
+Author Name <author@example.com>
+:toc:
+
+== Introduction
+
+This is a paragraph with *bold*, _italic_, and `monospace` text.
+
+== Code Example
+
+[source,ruby]
+----
+require 'asciidoctor'
+html = Asciidoctor.convert "Hello, *World*!", safe: :safe
+puts html
+----
+```
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multiple Output Formats" icon="file-export">
+    Convert to HTML 5, DocBook 5, and man pages out of the box. PDF, EPUB 3, and more via extensions.
+  </Card>
+  <Card title="Powerful Extension API" icon="puzzle-piece">
+    Add custom block types, inline macros, preprocessors, and postprocessors using the Ruby extension API.
+  </Card>
+  <Card title="CLI & Ruby API" icon="terminal">
+    Use from the command line or integrate directly into Ruby applications, Rails, GitHub, and GitLab.
+  </Card>
+  <Card title="Syntax Highlighting" icon="highlighter">
+    Built-in integrations with Rouge, highlight.js, and Pygments for beautiful source code rendering.
+  </Card>
+  <Card title="Safe Modes" icon="shield">
+    Fine-grained security controls for server deployments with unsafe, safe, server, and secure modes.
+  </Card>
+  <Card title="Cross-Platform" icon="globe">
+    Runs on CRuby, JRuby, and TruffleRuby. Also available as AsciidoctorJ (JVM) and Asciidoctor.js.
+  </Card>
+</CardGroup>
+
+## Asciidoctor Ecosystem
+
+Asciidoctor is at the center of a rich ecosystem of tools and extensions:
+
+| Project | Description |
+|---------|-------------|
+| [AsciidoctorJ](https://github.com/asciidoctor/asciidoctorj) | Run Asciidoctor on the JVM |
+| [Asciidoctor.js](https://github.com/asciidoctor/asciidoctor.js) | Run Asciidoctor in JavaScript environments |
+| [Asciidoctor PDF](https://github.com/asciidoctor/asciidoctor-pdf) | Convert AsciiDoc to PDF |
+| [Asciidoctor EPUB3](https://github.com/asciidoctor/asciidoctor-epub3) | Convert AsciiDoc to EPUB 3 |
+| [Asciidoctor Diagram](https://github.com/asciidoctor/asciidoctor-diagram) | Generate diagrams from text |
+| [Asciidoctor Maven Plugin](https://github.com/asciidoctor/asciidoctor-maven-plugin) | Build integration for Maven |
+| [Asciidoctor Gradle Plugin](https://github.com/asciidoctor/asciidoctor-gradle-plugin) | Build integration for Gradle |
+
+## Supported Ruby Versions
+
+Asciidoctor works on Linux, macOS, and Windows with the following Ruby implementations:
+
+- **CRuby (MRI)** 2.7 – 3.4
+- **JRuby** 9.4.0 – 10.0.2
+- **TruffleRuby** (GraalVM)
+
+## License
+
+Asciidoctor is open source software released under the [MIT License](https://github.com/asciidoctor/asciidoctor/blob/HEAD/LICENSE). Copyright © 2012–present Dan Allen, Sarah White, Ryan Waldron, and the individual contributors.

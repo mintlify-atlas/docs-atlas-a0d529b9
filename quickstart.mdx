@@ -1,80 +1,152 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Convert your first AsciiDoc document to HTML in minutes using the Asciidoctor CLI or Ruby API."
 ---
 
-## Get started in three steps
+This guide walks you from a fresh Asciidoctor installation to a working HTML conversion in minutes.
 
-Get your documentation site running locally and make your first customization.
+<Steps>
+  <Step title="Verify your installation">
+    Confirm that Asciidoctor is installed and on your `PATH`:
 
-### Step 1: Set up your local environment
+    ```bash
+    asciidoctor --version
+    ```
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    You should see output similar to:
 
-### Step 2: Deploy your changes
+    ```text
+    Asciidoctor 2.0.22 [https://asciidoctor.org]
+    Runtime Environment (ruby 3.4.0p0 [x86_64-linux]) (lc:UTF-8 fs:UTF-8 in:UTF-8 ex:UTF-8)
+    ```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    If the command is not found, follow the [installation guide](/install) first.
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+    <Tip>
+      Run `asciidoctor --help` to see all available flags and options.
+    </Tip>
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Create a sample AsciiDoc document">
+    Create a file named `document.adoc` with the following content:
 
-### Step 3: Go live
+    ```asciidoc document.adoc
+    = My First Document
+    Author Name <author@example.com>
+    :toc:
+    :source-highlighter: highlight.js
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    == Introduction
+
+    Asciidoctor converts *AsciiDoc* source files to HTML, DocBook, and other
+    formats. AsciiDoc is designed to be readable in its raw form while still
+    producing beautiful rendered output.
+
+    == Getting started
+
+    Here are the main things you can do with Asciidoctor:
+
+    * Convert a file to HTML with a single command
+    * Use the Ruby API to convert content programmatically
+    * Extend the processor with custom converters and extensions
+
+    == A code example
+
+    [source,ruby]
+    ----
+    require 'asciidoctor'
+
+    html = Asciidoctor.convert "Hello, *World*!", safe: :safe
+    puts html
+    ----
+
+    The call above returns an HTML string you can embed directly in a page.
+    ```
+  </Step>
+
+  <Step title="Convert to HTML">
+    Run the following command in the same directory as `document.adoc`:
+
+    ```bash
+    asciidoctor document.adoc
+    ```
+
+    Asciidoctor writes the output to `document.html` in the same directory. Open it in a browser to see the rendered result.
+
+    To write the output to a different directory, use the `-D` flag:
+
+    ```bash
+    asciidoctor -D output document.adoc
+    ```
+
+    To convert to DocBook 5 instead of HTML, use the `-b` flag:
+
+    ```bash
+    asciidoctor -b docbook document.adoc
+    ```
+  </Step>
+
+  <Step title="Convert using the Ruby API">
+    You can also convert AsciiDoc content programmatically. This is useful when integrating Asciidoctor into a Ruby application, a Rails app, or a build pipeline.
+
+    First, require the gem:
+
+    ```ruby
+    require 'asciidoctor'
+    ```
+
+    **Convert a string to embeddable HTML**
+
+    ```ruby
+    content = '_Zen_ in the art of writing https://asciidoctor.org[AsciiDoc].'
+    html = Asciidoctor.convert content, safe: :safe
+    puts html
+    # => <div class="paragraph"><p><em>Zen</em> in the art of writing <a href="https://asciidoctor.org">AsciiDoc</a>.</p></div>
+    ```
+
+    **Convert a string to a full HTML document**
+
+    ```ruby
+    content = '_Zen_ in the art of writing https://asciidoctor.org[AsciiDoc].'
+    html = Asciidoctor.convert content, header_footer: true, safe: :safe
+    puts html
+    # => Full HTML document including <html>, <head>, and <body> tags
+    ```
+
+    **Convert a file**
+
+    ```ruby
+    Asciidoctor.convert_file 'document.adoc', to_file: true, safe: :safe
+    # => Writes document.html to the same directory as document.adoc
+    ```
+
+    **Parse the document before converting**
+
+    If you need access to the parsed document object before conversion:
+
+    ```ruby
+    content = '_Zen_ in the art of writing https://asciidoctor.org[AsciiDoc].'
+    doc = Asciidoctor.load content, header_footer: true, safe: :safe
+    puts doc.doctitle   # => nil (no title declared in this string)
+    html = doc.convert
+    ```
+
+    <Note>
+      When using the API, the default safe mode is `:secure`. In secure mode, features like the `include` directive are disabled. Set `safe: :server` (recommended for server deployments) or `safe: :safe` to enable them.
+    </Note>
+  </Step>
+</Steps>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+<CardGroup cols={3}>
+  <Card title="CLI options" icon="terminal" href="https://docs.asciidoctor.org/asciidoctor/latest/cli/options/">
+    Full reference for all `asciidoctor` command-line flags and switches.
+  </Card>
+  <Card title="Ruby API" icon="code" href="https://docs.asciidoctor.org/asciidoctor/latest/api/">
+    In-depth guide to using Asciidoctor programmatically from Ruby.
+  </Card>
+  <Card title="Safe modes" icon="shield" href="https://docs.asciidoctor.org/asciidoctor/latest/safe-modes/">
+    Understand the four safe mode levels and when to use each one.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

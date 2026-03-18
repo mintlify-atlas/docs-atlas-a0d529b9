@@ -1,0 +1,218 @@
+---
+title: "HTML 5 converter"
+description: "Learn how to use Asciidoctor's default HTML 5 converter, configure its key document attributes, customize its stylesheet, and control features like table of contents, source highlighting, and section numbering."
+---
+
+The HTML 5 converter is Asciidoctor's default converter. When you run `asciidoctor` without specifying a backend, it uses this converter to produce a self-contained HTML 5 document with semantic markup and an embedded default stylesheet.
+
+| Property | Value |
+|---|---|
+| Backend names | `html5`, `html` |
+| Converter class | `Asciidoctor::Converter::Html5Converter` |
+| Output format | HTML 5 |
+| File extension | `.html` |
+
+## Basic usage
+
+<Tabs>
+  <Tab title="CLI">
+    ```bash
+    # html5 is the default — the -b flag is optional
+    asciidoctor document.adoc
+
+    # Explicit backend flag
+    asciidoctor -b html5 document.adoc
+    ```
+  </Tab>
+  <Tab title="Ruby API">
+    ```ruby
+    require 'asciidoctor'
+
+    Asciidoctor.convert_file 'document.adoc', safe: :safe
+
+    # Explicit backend (same result)
+    Asciidoctor.convert_file 'document.adoc', backend: 'html5', safe: :safe
+    ```
+  </Tab>
+</Tabs>
+
+Asciidoctor derives the output filename from the input filename. `document.adoc` produces `document.html` in the same directory.
+
+## Default stylesheet
+
+When no custom stylesheet is specified, Asciidoctor embeds its built-in stylesheet (`asciidoctor.css`) directly in the `<head>` of the output HTML. The stylesheet uses web fonts loaded from Google Fonts:
+
+- **Noto Serif** — body text
+- **Open Sans** — headings
+- **Noto Sans Mono** — monospaced phrases and verbatim blocks
+
+<Warning>
+The default stylesheet loads web fonts from Google Fonts. If your deployment environment restricts outbound network requests or requires GDPR compliance, disable the web fonts by unsetting the `webfonts` attribute.
+
+```bash
+asciidoctor -a webfonts! document.adoc
+```
+</Warning>
+
+To extract the default stylesheet to the current directory:
+
+```ruby
+require 'asciidoctor'
+
+Asciidoctor::Stylesheets.instance.write_primary_stylesheet '.'
+```
+
+## Key document attributes
+
+Control the HTML 5 converter's output by setting document attributes in the document header, on the CLI with `-a`, or in the Ruby API with `attributes:`.
+
+### Stylesheet
+
+| Attribute | Description | Example value |
+|---|---|---|
+| `stylesheet` | Path to a custom CSS file. When empty or set to a default name, the built-in stylesheet is used. | `my-theme.css` |
+| `stylesdir` | Directory containing the stylesheet. | `./css` |
+| `linkcss` | Link to the stylesheet instead of embedding it. Attribute flag (no value). | |
+| `copycss` | Copy the stylesheet to the output directory when `linkcss` is set. | |
+
+```bash
+# Embed a custom stylesheet
+asciidoctor -a stylesheet=my-theme.css -a stylesdir=./css document.adoc
+
+# Link to the stylesheet instead of embedding it
+asciidoctor -a linkcss -a copycss document.adoc
+```
+
+### Icons
+
+| Attribute | Description |
+|---|---|
+| `icons=font` | Use Font Awesome icons (loaded from a CDN). |
+| `icons=image` | Use image-based icons from the `iconsdir` directory. |
+
+```bash
+asciidoctor -a icons=font document.adoc
+```
+
+### Source highlighting
+
+Set `source-highlighter` to enable syntax highlighting in listing blocks tagged with a language:
+
+| Value | Notes |
+|---|---|
+| `rouge` | Requires the `rouge` gem. Highlights at build time. |
+| `highlight.js` | Client-side highlighting via CDN JavaScript. |
+| `pygments` | Requires the `pygments.rb` gem. Highlights at build time. |
+
+```bash
+asciidoctor -a source-highlighter=rouge document.adoc
+```
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  attributes: { 'source-highlighter' => 'rouge' },
+  safe: :safe
+```
+
+### Table of contents
+
+| Attribute | Description |
+|---|---|
+| `toc` | Generate a table of contents. Placement is `auto` by default. |
+| `toc=left` | Render the TOC as a left sidebar. |
+| `toc=right` | Render the TOC as a right sidebar. |
+| `toc=macro` | Place the TOC manually using the `toc::[]` macro. |
+| `toclevels` | Number of section levels to include (default: `2`). |
+
+```bash
+asciidoctor -a toc=left -a toclevels=3 document.adoc
+```
+
+### Sections
+
+| Attribute | Description |
+|---|---|
+| `sectanchors` | Add hover anchor links to section titles. |
+| `sectnums` | Auto-number sections. |
+| `sectnumlevels` | Depth of section numbering (default: `3`). |
+
+```bash
+asciidoctor -a sectanchors -a sectnums document.adoc
+```
+
+### Document structure
+
+| Attribute | Description |
+|---|---|
+| `nofooter` | Suppress the document footer. |
+| `noheader` | Suppress the document header. |
+| `max-width` | Set a CSS `max-width` on the content area (e.g., `960px`). |
+| `nolang` | Omit the `lang` attribute from the `<html>` element. |
+
+## Full example
+
+<CodeGroup>
+
+```asciidoc document.adoc
+= My Document
+Jane Smith <jane@example.com>
+v1.0, 2026-01-15
+:doctype: article
+:toc: left
+:toclevels: 3
+:sectnums:
+:sectanchors:
+:source-highlighter: rouge
+:icons: font
+:stylesheet: my-theme.css
+:stylesdir: ./css
+
+== Introduction
+
+This is my document.
+
+== Getting started
+
+[source,ruby]
+----
+puts 'Hello, world!'
+----
+```
+
+```bash CLI
+asciidoctor \
+  -a toc=left \
+  -a sectnums \
+  -a source-highlighter=rouge \
+  document.adoc
+```
+
+```ruby Ruby API
+require 'asciidoctor'
+
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  attributes: {
+    'toc'                 => 'left',
+    'sectnums'            => '',
+    'source-highlighter'  => 'rouge'
+  }
+```
+
+</CodeGroup>
+
+## XHTML variant
+
+<Note>
+The HTML 5 converter also supports an XHTML output mode via the `xhtml5` (or `xhtml`) backend name. In XHTML mode, void elements are self-closed (e.g., `<br/>` instead of `<br>`), and the root `<html>` element includes the XHTML namespace declaration.
+
+```bash
+asciidoctor -b xhtml5 document.adoc
+```
+
+When using custom templates with Slim or Haml and you want XHTML output for a non-HTML backend, set the `htmlsyntax` attribute to `xml` explicitly:
+
+```bash
+asciidoctor -T ./templates -b slides -a htmlsyntax=xml document.adoc
+```
+</Note>

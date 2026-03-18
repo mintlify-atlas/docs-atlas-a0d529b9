@@ -1,0 +1,287 @@
+---
+title: "Upgrade Guide"
+description: "Guidance for upgrading Asciidoctor across major and minor versions, including breaking changes, deprecated syntax, and the general upgrade process."
+keywords: ["upgrade", "migration", "breaking changes", "asciidoctor 2.0", "deprecated", "compat-mode"]
+---
+
+This guide covers what to be aware of when upgrading Asciidoctor between versions. Major releases may introduce breaking changes to AsciiDoc syntax, the Ruby API, and CLI behavior.
+
+<Note>
+If you are migrating from AsciiDoc.py rather than from an older version of Asciidoctor, see [Migrate from AsciiDoc.py](/migrate/asciidoc-py) instead.
+</Note>
+
+## General upgrade process
+
+<Steps>
+  <Step title="Update your Gemfile">
+    Update the version constraint for the `asciidoctor` gem in your `Gemfile`:
+
+    ```ruby
+    gem 'asciidoctor', '~> 2.0'
+    ```
+  </Step>
+  <Step title="Update dependencies">
+    Run Bundler to resolve and install the updated gem:
+
+    ```bash
+    bundle update asciidoctor
+    ```
+
+    Or, if you installed without Bundler:
+
+    ```bash
+    gem update asciidoctor
+    ```
+  </Step>
+  <Step title="Review breaking changes">
+    Read through the relevant sections of this page for the versions you are crossing. Pay attention to `<Warning>` callouts marking breaking changes.
+  </Step>
+  <Step title="Convert your documents">
+    Run Asciidoctor against your documents and check the output and any warnings logged to the console:
+
+    ```bash
+    asciidoctor -v document.adoc
+    ```
+  </Step>
+  <Step title="Update your content and tooling">
+    Apply any changes needed to your AsciiDoc content, extensions, or build scripts based on the breaking changes listed below.
+  </Step>
+</Steps>
+
+## Upgrading to 2.0
+
+Asciidoctor 2.0 was released on 2019-03-22. It introduced a number of breaking changes relative to 1.5.x.
+
+### Ruby and JRuby version requirements
+
+<Warning>
+Support for Ruby versions older than 2.3 and JRuby versions older than 9.1 was dropped in 2.0. Upgrade your Ruby runtime before upgrading Asciidoctor.
+</Warning>
+
+### API: `render` methods renamed to `convert`
+
+<Warning>
+The `render` and `render_file` methods on the `Asciidoctor` module were renamed to `convert` and `convert_file`. The old names are retained as deprecated aliases and will be removed in a future version.
+</Warning>
+
+<CodeGroup>
+
+```ruby before (deprecated)
+Asciidoctor.render('= Hello', safe: :safe)
+Asciidoctor.render_file('document.adoc', safe: :safe)
+```
+
+```ruby after
+Asciidoctor.convert('= Hello', safe: :safe)
+Asciidoctor.convert_file('document.adoc', safe: :safe)
+```
+
+</CodeGroup>
+
+### API: `header_footer` option renamed to `standalone`
+
+<Warning>
+The `:header_footer` API option was renamed to `:standalone`. The old name is still accepted for backwards compatibility.
+</Warning>
+
+<CodeGroup>
+
+```ruby before (deprecated)
+Asciidoctor.convert_file 'document.adoc', header_footer: false
+```
+
+```ruby after
+Asciidoctor.convert_file 'document.adoc', standalone: false
+```
+
+</CodeGroup>
+
+The corresponding CLI flag `--no-header-footer` / `-s` gained a new alias: `--embedded` / `-e`.
+
+### Syntax highlighter API redesigned
+
+<Warning>
+The syntax highlighter subsystem was completely redesigned in 2.0. The highlighter is now a pluggable adapter. If you have custom code that interacts with syntax highlighter internals, it must be rewritten to use the new `SyntaxHighlighter` API.
+</Warning>
+
+Built-in adapters are now registered under `Asciidoctor::SyntaxHighlighter`. The adapter for Rouge was added in this release. To register a custom adapter:
+
+```ruby
+class Asciidoctor::SyntaxHighlighter::MyAdapter < Asciidoctor::SyntaxHighlighter::Base
+  register_for 'myadapter'
+
+  def highlight?
+    true
+  end
+
+  def highlight node, source, lang, opts
+    # return highlighted source
+    source
+  end
+
+  def format node, lang, opts
+    super
+  end
+end
+```
+
+### Converter API redesigned
+
+The Converter API was redesigned in 2.0 to align with the `SyntaxHighlighter` API.
+
+| Old | New |
+|---|---|
+| `Converter::BackendInfo` | `Converter::BackendTraits` |
+| `backend_info` method | `backend_traits` method |
+| `Converter#convert_with_options` | Removed |
+
+Built-in converters are now regular converters that can be resolved via `Asciidoctor::Converter.for` and instantiated via `Asciidoctor::Converter.create`.
+
+### Attribute inheritance change
+
+<Warning>
+The default value of the third argument to `AbstractNode#attr` and `AbstractNode#attr?` changed from the document to `nil`, meaning attributes no longer inherit from the document by default unless you pass the fallback attribute name explicitly.
+</Warning>
+
+<CodeGroup>
+
+```ruby before (1.5.x behavior)
+# Attribute looked up on node, then inherited from document automatically
+node.attr 'myattr'
+```
+
+```ruby after (2.0 behavior)
+# Must pass the fallback attribute name explicitly to inherit from document
+node.attr 'myattr', nil, 'myattr'
+```
+
+</CodeGroup>
+
+### Docbook45 backend removed from core
+
+<Warning>
+The `docbook45` backend converter was removed from Asciidoctor core. It is now maintained as a separate gem: `asciidoctor-docbook45`.
+</Warning>
+
+If you were using `backend: docbook45` or `-b docbook45`, install the external gem:
+
+```bash
+gem install asciidoctor-docbook45
+```
+
+Then require it before invoking Asciidoctor:
+
+```bash
+asciidoctor -r asciidoctor-docbook45 -b docbook45 document.adoc
+```
+
+### Two-character quote block syntax removed
+
+<Warning>
+The two-character quote block delimiter (`""`) was removed in 2.0. Use a standard example block (`====`) or a quote block (`____`) instead.
+</Warning>
+
+<CodeGroup>
+
+```asciidoc before (removed)
+""
+This was a quote block.
+""
+```
+
+```asciidoc after
+[quote]
+____
+This is a quote block.
+____
+```
+
+</CodeGroup>
+
+### `hardbreaks` renamed to `hardbreaks-option`
+
+<Warning>
+The `hardbreaks` document attribute was renamed to `hardbreaks-option`. The old name is retained as a deprecated alias.
+</Warning>
+
+<CodeGroup>
+
+```asciidoc before (deprecated)
+:hardbreaks:
+```
+
+```asciidoc after
+:hardbreaks-option:
+```
+
+</CodeGroup>
+
+### `verse` table cell style dropped
+
+<Warning>
+The `verse` table cell style was removed in 2.0. Verse-style table cells are now treated as normal table cells.
+</Warning>
+
+### Logging: warnings now routed through a logger
+
+All processor messages are now routed through a Ruby `Logger` instance rather than using `Kernel#warn`. This means:
+
+- You can suppress messages using a `NullLogger`.
+- You can capture messages in memory using a `MemoryLogger`.
+- The CLI gained a `--failure-level` option to force a non-zero exit code when the specified log level is reached.
+
+```ruby
+require 'asciidoctor'
+
+logger = Asciidoctor::MemoryLogger.new
+Asciidoctor.convert_file 'document.adoc', safe: :safe, logger: logger
+logger.messages.each { |msg| puts msg[:text] }
+```
+
+## Notable changes in 1.5.x
+
+### 1.5.7: Section ID generation changed
+
+<Warning>
+Asciidoctor 1.5.7 changed how automatic section IDs are generated. XML tags, character references, and non-word characters (except hyphens, dots, and spaces) are now dropped from section titles when building IDs. If you rely on auto-generated IDs for cross-references, verify your IDs after upgrading.
+</Warning>
+
+### 1.5.7: Inter-document xrefs disabled in compat mode
+
+Inter-document cross-references are disabled when `compat-mode` is enabled as of 1.5.7.
+
+### 1.5.7: `footnoteref` macro deprecated
+
+The `footnoteref` macro is deprecated. Use the `footnote` macro with a reference ID instead:
+
+<CodeGroup>
+
+```asciidoc before (deprecated)
+Some text.footnoteref:[fn1,The footnote text.]
+More text.footnoteref:[fn1]
+```
+
+```asciidoc after
+Some text.footnote:fn1[The footnote text.]
+More text.footnote:fn1[]
+```
+
+</CodeGroup>
+
+## Checking for deprecation warnings
+
+Run Asciidoctor with verbose logging enabled to surface deprecation warnings in your documents and extensions:
+
+```bash
+asciidoctor -v document.adoc
+```
+
+Or set the log level to `DEBUG` via the API:
+
+```ruby
+require 'logger'
+
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  logger: (Logger.new $stderr, level: Logger::DEBUG)
+```

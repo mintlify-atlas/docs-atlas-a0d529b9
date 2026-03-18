@@ -1,0 +1,224 @@
+---
+title: "Asciidoctor.js"
+description: "Use Asciidoctor in JavaScript environments. Asciidoctor.js packages the Asciidoctor Ruby gem for Node.js, Deno, and the browser via Opal."
+keywords: ["asciidoctor.js", "javascript", "node", "browser", "npm", "opal", "typescript"]
+---
+
+Asciidoctor.js is the official JavaScript port of Asciidoctor. It is compiled from the Ruby source using [Opal](https://opalrb.com/), a Ruby-to-JavaScript transpiler, and published to npm as `@asciidoctor/core`. It runs in Node.js, Deno, and modern browsers without any native dependencies.
+
+<Note>
+  Asciidoctor.js closely tracks the Ruby gem but may lag slightly behind on new features. Check the [changelog](https://github.com/asciidoctor/asciidoctor.js/blob/main/CHANGELOG.adoc) to see which Ruby version it corresponds to.
+</Note>
+
+## Installation
+
+<Tabs>
+  <Tab title="npm">
+    ```bash
+    npm install @asciidoctor/core
+    ```
+  </Tab>
+  <Tab title="yarn">
+    ```bash
+    yarn add @asciidoctor/core
+    ```
+  </Tab>
+  <Tab title="pnpm">
+    ```bash
+    pnpm add @asciidoctor/core
+    ```
+  </Tab>
+</Tabs>
+
+## Basic usage
+
+### CommonJS (Node.js)
+
+```javascript node-convert.js
+const asciidoctor = require('@asciidoctor/core')()
+
+const html = asciidoctor.convert('Hello, *World*!')
+console.log(html)
+// <div class="paragraph"><p>Hello, <strong>World</strong>!</p></div>
+```
+
+### ES modules
+
+```javascript node-esm.mjs
+import Asciidoctor from '@asciidoctor/core'
+
+const asciidoctor = Asciidoctor()
+const html = asciidoctor.convert('Hello, *World*!')
+console.log(html)
+```
+
+### TypeScript
+
+Type definitions are bundled with the package:
+
+```typescript convert.ts
+import Asciidoctor from '@asciidoctor/core'
+
+const asciidoctor: Asciidoctor = Asciidoctor()
+const html: string = asciidoctor.convert('Hello, *World*!')
+console.log(html)
+```
+
+## Convert a file
+
+```javascript convert-file.js
+const asciidoctor = require('@asciidoctor/core')()
+
+// Reads document.adoc and writes document.html to disk
+asciidoctor.convertFile('document.adoc', { safe: 'safe' })
+
+// Convert and capture the output string instead
+const html = asciidoctor.convertFile('document.adoc', {
+  safe: 'safe',
+  to_file: false
+})
+console.log(html)
+```
+
+## Document attributes
+
+Pass attributes as an object. Attribute names match those of the Ruby gem:
+
+```javascript attributes.js
+const asciidoctor = require('@asciidoctor/core')()
+
+const html = asciidoctor.convert(`
+= My Document
+
+Content here.
+`, {
+  safe: 'safe',
+  attributes: {
+    toc: 'left',
+    'source-highlighter': 'highlight.js',
+    icons: 'font',
+    sectanchors: ''
+  }
+})
+```
+
+## Backend selection
+
+```javascript docbook.js
+const asciidoctor = require('@asciidoctor/core')()
+
+// DocBook 5 output
+const docbook = asciidoctor.convert('= My Book\n\nContent.', {
+  backend: 'docbook5'
+})
+```
+
+## Browser usage
+
+### CDN
+
+Load Asciidoctor.js directly from a CDN for browser-based use. No build step required:
+
+```html index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Asciidoctor.js in the browser</title>
+</head>
+<body>
+  <div id="output"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@asciidoctor/core/dist/browser/asciidoctor.js"></script>
+  <script>
+    const asciidoctor = Asciidoctor()
+    const html = asciidoctor.convert(
+      '= Hello\n\nAsciidoctor.js running in the browser!'
+    )
+    document.getElementById('output').innerHTML = html
+  </script>
+</body>
+</html>
+```
+
+### Bundler (webpack, Vite, esbuild)
+
+Import `@asciidoctor/core` like any other npm package. All major bundlers handle it without special configuration:
+
+```javascript app.js
+import Asciidoctor from '@asciidoctor/core'
+
+const asciidoctor = Asciidoctor()
+
+export function renderAsciiDoc(source) {
+  return asciidoctor.convert(source, { safe: 'secure' })
+}
+```
+
+<Warning>
+  Asciidoctor.js is large (~1.5 MB minified). Consider lazy-loading it or using a Web Worker for browser applications to avoid blocking the main thread.
+</Warning>
+
+## Extensions
+
+Register extensions using the same API as the Ruby gem:
+
+```javascript extension.js
+const asciidoctor = require('@asciidoctor/core')()
+const registry = asciidoctor.Extensions.create()
+
+registry.block('shout', function () {
+  this.onContext('paragraph')
+  this.process(function (parent, reader, attrs) {
+    const lines = reader.lines().map((line) => line.toUpperCase())
+    return this.createBlock(parent, 'paragraph', lines, attrs)
+  })
+})
+
+const html = asciidoctor.convert('shout::[\nHello world!\n]', {
+  extension_registry: registry
+})
+```
+
+## Supported features and limitations
+
+Asciidoctor.js supports the full AsciiDoc syntax recognized by the Ruby gem, including:
+
+- All built-in block types (listing, source, sidebar, example, admonition, table, etc.)
+- Inline formatting, macros, and cross-references
+- Document attributes and attribute substitution
+- HTML 5 and DocBook 5 converters
+- The extension API (preprocessors, tree processors, block processors, etc.)
+
+<Info>
+  The following features require additional packages or environment considerations:
+</Info>
+
+| Feature | Notes |
+|---|---|
+| PDF output | Not available natively. Use AsciidoctorJ or the Ruby gem for PDF. |
+| `include::` from the filesystem | Fully supported in Node.js. Disabled in browser (`safe: 'secure'`). |
+| Source highlighting | Supported via highlight.js in the browser; Rouge not available. |
+| Diagram extensions | Requires `@asciidoctor/kroki` or a compatible JS diagram extension. |
+| Math (STEM) | MathJax and KaTeX can be loaded client-side via `stem` attribute. |
+
+## Differences from the Ruby gem
+
+- The JavaScript API uses camelCase method names where Ruby uses snake_case (e.g., `convertFile` vs `convert_file`), but the options object keys remain snake_case to match Asciidoctor conventions.
+- There is no built-in CLI equivalent to the `asciidoctor` command. Install `@asciidoctor/cli` separately for a Node.js CLI tool.
+- JRuby-specific concerns (encoding, thread safety) do not apply.
+
+## CLI tool
+
+For a command-line interface in Node.js environments, install the CLI package:
+
+```bash
+npm install --global @asciidoctor/cli
+asciidoctor document.adoc
+```
+
+## Resources
+
+- [Asciidoctor.js documentation](https://docs.asciidoctor.org/asciidoctor.js/latest/)
+- [Asciidoctor.js on GitHub](https://github.com/asciidoctor/asciidoctor.js)
+- [Asciidoctor.js on npm](https://www.npmjs.com/package/@asciidoctor/core)

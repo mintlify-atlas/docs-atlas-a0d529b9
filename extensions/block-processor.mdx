@@ -1,0 +1,193 @@
+---
+title: "Block processor"
+description: "Handle custom delimited blocks and paragraphs with a BlockProcessor extension."
+---
+
+A `BlockProcessor` is invoked when Asciidoctor encounters a delimited block or paragraph whose style (the first positional attribute in the attribute list) matches a registered name. The processor receives the parent block, a reader containing the block's raw content, and the parsed attributes, and returns an AST node to insert into the document tree.
+
+## Class API
+
+```ruby
+class Asciidoctor::Extensions::BlockProcessor < Asciidoctor::Extensions::Processor
+  attr_accessor :name  # The registered block name (Symbol)
+
+  def initialize(name = nil, config = {})
+    # name    - Symbol matching the block style in AsciiDoc source
+    # config  - Hash of configuration options (merged with class-level options)
+  end
+
+  # Override this method in your subclass.
+  #
+  # parent     - The parent Block, Section, or Document.
+  # reader     - A Reader containing the raw content lines of the block.
+  # attributes - A Hash of parsed block attributes.
+  #
+  # Returns an Asciidoctor AST node (Block, List, etc.) to insert into the tree.
+  def process(parent, reader, attributes)
+    raise NotImplementedError
+  end
+end
+```
+
+### Class-level options
+
+Set these on the class using the DSL helpers or `option`:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `:contexts` | `Set[:open, :paragraph]` | The block contexts this processor handles. Common values: `:paragraph`, `:open`, `:listing`, `:literal`, `:sidebar`, `:example`, `:quote`, `:pass`. |
+| `:content_model` | `:compound` | How the block content is parsed. `:simple` — a single paragraph; `:compound` — child blocks; `:raw` — verbatim/passthrough; `:empty` — no content. |
+| `:positional_attrs` | `nil` | Names to assign to positional attributes in the attrlist. |
+| `:default_attrs` | `nil` | Default attribute values as a Hash. |
+
+### Helper methods (inherited from `Processor`)
+
+| Method | Description |
+|--------|-------------|
+| `create_block(parent, context, source, attrs, opts={})` | Creates a generic `Block` node. |
+| `create_paragraph(parent, source, attrs, opts={})` | Creates a `:paragraph` block. |
+| `create_listing_block(parent, source, attrs, opts={})` | Creates a `:listing` block. |
+| `create_literal_block(parent, source, attrs, opts={})` | Creates a `:literal` block. |
+| `create_example_block(parent, source, attrs, opts={})` | Creates an `:example` block. |
+| `create_open_block(parent, source, attrs, opts={})` | Creates an `:open` block. |
+| `create_pass_block(parent, source, attrs, opts={})` | Creates a `:pass` (passthrough) block. |
+| `create_image_block(parent, attrs, opts={})` | Creates an `:image` block. |
+| `create_list(parent, context, attrs=nil)` | Creates a `List` node (`:ulist`, `:olist`, etc.). |
+| `parse_content(parent, content, attributes=nil)` | Parses content lines into child blocks attached to `parent`. |
+
+## Registration
+
+<Tabs>
+  <Tab title="Class">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      block ShoutBlock           # name read from class
+      block ShoutBlock, :shout   # explicit name
+    end
+    ```
+  </Tab>
+  <Tab title="Block DSL">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      block :shout do
+        process do |parent, reader, attrs|
+          create_paragraph parent, reader.lines.map(&:upcase), attrs
+        end
+      end
+    end
+    ```
+  </Tab>
+  <Tab title="named + on_context">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      block do
+        named :shout
+        on_context :paragraph
+        parse_content_as :simple
+        process do |parent, reader, attrs|
+          create_paragraph parent, reader.lines.map(&:upcase), attrs
+        end
+      end
+    end
+    ```
+  </Tab>
+</Tabs>
+
+## Example: uppercase block
+
+This example is adapted directly from the Asciidoctor test suite. It registers a `[yell]` block that uppercases each line of a paragraph, with an optional `chars` attribute that selects specific characters to uppercase.
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class UppercaseBlock < Asciidoctor::Extensions::BlockProcessor
+  use_dsl
+  named :yell
+  on_context :paragraph
+  name_positional_attributes 'chars'
+  parse_content_as :simple
+
+  def process parent, reader, attributes
+    if (chars = attributes['chars'])
+      upcase_chars = chars.upcase
+      create_paragraph parent, reader.lines.map {|l| l.downcase.tr chars, upcase_chars }, attributes
+    else
+      create_paragraph parent, reader.lines.map(&:upcase), attributes
+    end
+  end
+end
+
+Asciidoctor::Extensions.register do
+  block UppercaseBlock
+end
+```
+
+Usage in AsciiDoc:
+
+```asciidoc
+[yell]
+Get a move on.
+
+[yell,chars=aeiou]
+the quick brown fox
+```
+
+The first block renders as `GET A MOVE ON.`. The second uppercases only the vowels: `thE qUIck brOwn fOx`.
+
+## Example: custom admonition block
+
+This processor maps a `[caution]`-style custom block onto an existing admonition style:
+
+```ruby
+class CustomAdmonitionBlock < Asciidoctor::Extensions::BlockProcessor
+  use_dsl
+  named :disclaimer
+  on_contexts :paragraph, :open
+  parse_content_as :compound
+
+  def process parent, reader, attributes
+    attributes['name']  = 'warning'
+    attributes['style'] = 'WARNING'
+    block = create_block parent, :admonition, nil, attributes, content_model: :compound
+    parse_content block, reader
+    block
+  end
+end
+```
+
+Usage:
+
+```asciidoc
+[disclaimer]
+====
+This software is provided as-is without any warranty.
+====
+```
+
+## Example: compound block with child content
+
+When your block contains child blocks (not a single paragraph), set `:content_model` to `:compound` and call `parse_content` to populate the returned node:
+
+```ruby
+class SidebarNoteBlock < Asciidoctor::Extensions::BlockProcessor
+  use_dsl
+  named :sidebar_note
+  on_context :open
+  parse_content_as :compound
+
+  def process parent, reader, attributes
+    block = create_block parent, :sidebar, nil, attributes
+    parse_content block, reader
+    block
+  end
+end
+```
+
+<Tip>
+  When the value of the `cloaked-context` attribute is `:paragraph`, the input was a paragraph (not a delimited block). In that case, use `:simple` as the content model so the text is treated as a single paragraph rather than compound content.
+</Tip>
+
+<Note>
+  The `use_dsl` call at the class level mixes in the `BlockProcessorDsl` module, which provides the `named`, `on_context`, `on_contexts`, `parse_content_as`, `name_positional_attributes`, and `default_attributes` class-level DSL helpers.
+</Note>

@@ -1,0 +1,200 @@
+---
+title: "Using the Ruby API"
+description: "Integrate Asciidoctor into Ruby applications using the programmatic API to convert, load, and inspect AsciiDoc documents."
+---
+
+Asciidoctor exposes a Ruby API for converting AsciiDoc content from within applications. Use the API when you need to:
+
+- Embed document conversion in a Rails, Sinatra, or other Ruby application
+- Process documents from a database, HTTP request body, or in-memory string
+- Inspect the parsed document structure before or after conversion
+- Apply custom extensions or templates programmatically
+
+For one-off file conversions, the [CLI](/cli/usage) is simpler.
+
+<Warning>
+  When using the API, the default safe mode is `:secure`. In secure mode, the `include::[]` directive and file-system reads are disabled. Set `:safe => :server` or `:safe => :safe` explicitly to enable those features. See [Safe modes](/safe-modes) for details.
+</Warning>
+
+## Setup
+
+Add Asciidoctor to your `Gemfile`:
+
+```ruby
+gem 'asciidoctor'
+```
+
+Then require it at the top of your script or application:
+
+```ruby
+require 'asciidoctor'
+```
+
+## Converting a string
+
+`Asciidoctor.convert` accepts a String, IO, or Array of lines and returns the converted output as a String. By default (without `:to_file`), the header and footer are **not** included — you get an embeddable HTML fragment.
+
+```ruby
+require 'asciidoctor'
+
+content = '_Zen_ in the art of writing https://asciidoctor.org[AsciiDoc].'
+html = Asciidoctor.convert content, safe: :safe
+puts html
+# => <div class="paragraph"><p><em>Zen</em> in the art of writing...</p></div>
+```
+
+To get a complete, standalone HTML document, set `:standalone => true`:
+
+```ruby
+html = Asciidoctor.convert content, safe: :safe, standalone: true
+```
+
+## Converting a file
+
+`Asciidoctor.convert_file` reads the file from disk and converts it. When `:to_file` is `true`, the output is written to a file adjacent to the input with the appropriate extension.
+
+```ruby
+# Write document.html next to document.adoc
+Asciidoctor.convert_file 'document.adoc', safe: :safe, to_file: true
+```
+
+To write the output to a specific path:
+
+```ruby
+Asciidoctor.convert_file 'document.adoc', safe: :safe, to_file: 'output/result.html'
+```
+
+To write to a directory (output filename is derived from the input filename):
+
+```ruby
+Asciidoctor.convert_file 'document.adoc', safe: :safe, to_dir: 'output'
+```
+
+## Loading a document without converting
+
+`Asciidoctor.load` parses the source into an `Asciidoctor::Document` object without performing conversion. Use this when you need to inspect or modify the document tree.
+
+```ruby
+source = <<~ADOC
+  = My Document
+  Author Name <author@example.com>
+  :description: A short description.
+
+  First paragraph.
+
+  Second paragraph.
+ADOC
+
+doc = Asciidoctor.load source, safe: :safe
+
+puts doc.doctitle        # => "My Document"
+puts doc.author          # => "Author Name"
+puts doc.attr('description')  # => "A short description."
+puts doc.blocks.length   # => 2
+```
+
+Convert the document after inspecting it:
+
+```ruby
+html = doc.convert
+```
+
+## Loading a file without converting
+
+`Asciidoctor.load_file` is the file-based equivalent of `load`:
+
+```ruby
+doc = Asciidoctor.load_file 'document.adoc', safe: :safe
+
+puts doc.doctitle
+puts doc.attr('revdate')
+
+# Iterate over top-level sections
+doc.sections.each do |section|
+  puts section.title
+end
+
+# Convert when ready
+html = doc.convert
+```
+
+## Accessing document properties
+
+After loading a document, you can read its metadata and structure:
+
+```ruby
+doc = Asciidoctor.load_file 'guide.adoc', safe: :safe
+
+# Document header attributes
+puts doc.doctitle           # Title declared with "= Title"
+puts doc.author             # Author name
+puts doc.attr('email')      # Author email
+puts doc.attr('revnumber')  # Revision number
+puts doc.attr('revdate')    # Revision date
+
+# Structural properties
+puts doc.doctype            # => "article"
+puts doc.backend            # => "html5"
+puts doc.blocks.count       # Number of top-level blocks
+puts doc.sections.count     # Number of top-level sections
+
+# Check whether an attribute is set
+if doc.attr?('toc')
+  puts 'Table of contents is enabled'
+end
+```
+
+## Using custom templates
+
+To override the built-in converter output with [Tilt](https://github.com/rtomayko/tilt)-supported templates, pass `:template_dirs`:
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  template_dirs: ['/path/to/my-templates'],
+  to_file: true
+```
+
+You can specify multiple template directories. Templates in later directories override those in earlier ones:
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  template_dirs: ['/path/to/base-templates', '/path/to/overrides'],
+  template_engine: 'haml',
+  to_file: true
+```
+
+<Tip>
+  Templates must be named after the node type they handle (e.g., `paragraph.html.erb`, `section.html.haml`). Asciidoctor auto-detects the engine from the file extension if `:template_engine` is not set.
+</Tip>
+
+## Setting attributes
+
+Pass `:attributes` as a Hash to set or override document attributes:
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  attributes: {
+    'toc' => '',
+    'source-highlighter' => 'rouge',
+    'imagesdir' => 'images'
+  },
+  to_file: true
+```
+
+You can also pass attributes as an Array of `name=value` strings:
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  attributes: ['toc', 'source-highlighter=rouge'],
+  to_file: true
+```
+
+## Next steps
+
+- [API options reference](/api/options) — all supported option keys with types and defaults
+- [Safe modes](/safe-modes) — understanding the security levels
+- [CLI usage](/cli/usage) — converting files from the terminal

@@ -1,0 +1,152 @@
+---
+title: "highlight.js"
+description: "Use highlight.js, a client-side JavaScript syntax highlighter, with Asciidoctor. No gem installation or server-side processing required."
+keywords: ["highlight.js", "highlightjs", "client-side", "syntax highlighting", "javascript", "CDN"]
+---
+
+[highlight.js](https://highlightjs.org/) is a popular client-side syntax highlighter that runs in the browser. Because it operates entirely in JavaScript, enabling it requires no additional Ruby gems and does not slow down AsciiDoc conversion.
+
+Asciidoctor injects the highlight.js stylesheet and script tags into the generated HTML automatically. The browser loads these assets and applies highlighting when the page is rendered.
+
+<Note>
+Because highlight.js is client-side, callout markers in source blocks are passed through to the browser as raw text. The highlighter may interpret them as code, which can produce unexpected results. If you rely on callouts, consider using a build-time highlighter such as Rouge.
+</Note>
+
+## Enabling highlight.js
+
+Add the following attribute entry to the header of your AsciiDoc file:
+
+```asciidoc
+:source-highlighter: highlight.js
+```
+
+Or pass it via the CLI:
+
+```bash
+asciidoctor -a source-highlighter=highlight.js document.adoc
+```
+
+Or via the Ruby API:
+
+```ruby
+Asciidoctor.convert_file 'document.adoc',
+  safe: :safe,
+  attributes: { 'source-highlighter' => 'highlight.js' }
+```
+
+By default, Asciidoctor loads highlight.js version `9.18.3` from the [cdnjs CDN](https://cdnjs.com/libraries/highlight.js). The CDN bundle includes support for a common set of languages: apache, bash, coffeescript, cpp, cs, css, diff, http, ini, java, javascript, json, makefile, markdown, nginx, objectivec, perl, php, properties, python, ruby, shell, sql, xml, and yaml.
+
+## Source block example
+
+```asciidoc
+:source-highlighter: highlight.js
+
+[,javascript]
+----
+const greet = (name) => {
+  console.log(`Hello, ${name}!`)
+}
+
+greet('highlight.js')
+----
+```
+
+Asciidoctor sets the `data-lang` attribute on the `<code>` element so that highlight.js can identify the language and apply the correct grammar:
+
+```html
+<pre class="highlight">
+  <code class="language-javascript hljs" data-lang="javascript">
+    ...
+  </code>
+</pre>
+```
+
+## Changing the theme
+
+The `highlightjs-theme` attribute controls which theme is used to color the highlighted tokens. The default is `github`.
+
+```asciidoc
+:source-highlighter: highlight.js
+:highlightjs-theme: monokai-sublime
+```
+
+The theme is loaded from the CDN. The value of `highlightjs-theme` must match the basename of the theme file, minus the `.min.css` extension. For example, `monokai-sublime` maps to `monokai-sublime.min.css`.
+
+You can browse available themes in the [cdnjs listing for highlight.js 9.18.3](https://cdnjs.com/libraries/highlight.js/9.18.3) — filter by **Asset Type: Styling**.
+
+## Loading additional languages
+
+The default CDN bundle only includes common languages. To load support for additional languages, set the `highlightjs-languages` attribute to a comma-separated list of language names:
+
+```asciidoc
+:source-highlighter: highlight.js
+:highlightjs-languages: rust, swift
+```
+
+Asciidoctor injects additional `<script>` tags for each listed language into the generated HTML footer.
+
+<Note>
+The `highlightjs-languages` attribute only works when generating a standalone HTML document (the default). It has no effect when generating embedded HTML, which is used by site generator integrations such as Antora.
+</Note>
+
+## How Asciidoctor injects highlight.js
+
+When the document is converted, Asciidoctor injects markup into two locations:
+
+**In `<head>`** — the theme stylesheet:
+
+```html
+<link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/styles/github.min.css">
+```
+
+**In the footer** — the main script, any extra language scripts, and the initialization call:
+
+```html
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.3/languages/rust.min.js"></script>
+<script>
+if (!hljs.initHighlighting.called) {
+  hljs.initHighlighting.called = true
+  ;[].slice.call(document.querySelectorAll('pre.highlight > code[data-lang]')).forEach(function (el) {
+    hljs.highlightBlock(el)
+  })
+}
+</script>
+```
+
+Only `<code>` elements that have a `data-lang` attribute are highlighted. Source blocks with no language set are skipped.
+
+## Using a custom highlight.js build
+
+If you need languages not included in the CDN bundle, or prefer to self-host the library, you can point Asciidoctor at a local copy:
+
+<Steps>
+  <Step title="Download a custom bundle">
+    Build and download a custom bundle from the [highlight.js download page](https://highlightjs.org/download/). Include the languages you need.
+  </Step>
+  <Step title="Unpack to a local directory">
+    Unpack the zip into a folder called `highlight` adjacent to your AsciiDoc file (or in the output directory, if it is different from the source directory).
+  </Step>
+  <Step title="Rename the files">
+    Rename `highlight/highlight.pack.js` to `highlight/highlight.min.js`.
+
+    Rename `highlight/styles/github.css` to `highlight/styles/github.min.css` (replace `github` with your chosen theme name if different).
+  </Step>
+  <Step title="Set highlightjsdir">
+    Add the attribute entry to your document header:
+
+    ```asciidoc
+    :source-highlighter: highlight.js
+    :highlightjsdir: highlight
+    ```
+
+    Or pass it via CLI:
+
+    ```bash
+    asciidoctor -a source-highlighter=highlight.js -a highlightjsdir=highlight document.adoc
+    ```
+  </Step>
+</Steps>
+
+Asciidoctor will use the local copy instead of the CDN-hosted library.

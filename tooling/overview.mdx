@@ -1,0 +1,230 @@
+---
+title: "Tooling & Ecosystem"
+description: "An overview of the Asciidoctor ecosystem — converters, build plugins, IDE integrations, diagram extensions, and cross-platform implementations."
+keywords: ["asciidoctor", "ecosystem", "tools", "extensions", "plugins", "asciidoctorj", "asciidoctor.js"]
+---
+
+Asciidoctor is more than a single Ruby gem. It is the center of a broad ecosystem of converters, build-tool plugins, IDE extensions, and cross-platform implementations that bring AsciiDoc processing to virtually every programming environment.
+
+The Ruby gem is the reference implementation. Everything else in the ecosystem either wraps it (AsciidoctorJ, Asciidoctor.js) or extends it through the standard extension API (`Asciidoctor::Extensions.register`).
+
+## Cross-platform implementations
+
+<CardGroup cols={2}>
+  <Card
+    title="AsciidoctorJ"
+    icon="coffee"
+    href="/tooling/asciidoctorj"
+  >
+    Packages Asciidoctor for the JVM using JRuby. Use it from Java, Kotlin, Groovy, or any JVM language, and from Maven or Gradle builds.
+  </Card>
+  <Card
+    title="Asciidoctor.js"
+    icon="js"
+    href="/tooling/asciidoctorjs"
+  >
+    Packages Asciidoctor for JavaScript environments — Node.js, Deno, and the browser. Published to npm as `@asciidoctor/core`.
+  </Card>
+</CardGroup>
+
+## Output format converters
+
+<CardGroup cols={2}>
+  <Card
+    title="Asciidoctor PDF"
+    icon="file-pdf"
+    href="https://docs.asciidoctor.org/pdf-converter/latest/"
+  >
+    Converts AsciiDoc documents directly to PDF using the Prawn PDF library. Fully themeable via a YAML theme file.
+  </Card>
+  <Card
+    title="Asciidoctor EPUB3"
+    icon="book"
+    href="https://docs.asciidoctor.org/epub3-converter/latest/"
+  >
+    Produces EPUB 3 e-books from AsciiDoc source. Supports Kindle output via KF8/MOBI packaging.
+  </Card>
+  <Card
+    title="Asciidoctor reveal.js"
+    icon="presentation"
+    href="https://docs.asciidoctor.org/reveal.js-converter/latest/"
+  >
+    Converts AsciiDoc documents into reveal.js HTML presentations. Each section becomes a slide.
+  </Card>
+  <Card
+    title="Asciidoctor DocBook"
+    icon="file-code"
+    href="https://docs.asciidoctor.org/asciidoctor/latest/docbook-backend/"
+  >
+    Built-in converter that produces DocBook 5 XML. Use downstream DocBook toolchains to target any output format.
+  </Card>
+</CardGroup>
+
+## Diagram integration
+
+<Card
+  title="Asciidoctor Diagram"
+  icon="diagram-project"
+  href="https://docs.asciidoctor.org/diagram-extension/latest/"
+>
+  Generates diagrams from embedded plain-text descriptions inside AsciiDoc source blocks. Supports PlantUML, Graphviz (DOT), Mermaid, D2, Ditaa, Kroki, and more. Install the gem and add `-r asciidoctor-diagram` to your command.
+</Card>
+
+```bash
+gem install asciidoctor-diagram
+asciidoctor -r asciidoctor-diagram document.adoc
+```
+
+## Build tool plugins
+
+<CardGroup cols={2}>
+  <Card
+    title="Asciidoctor Maven Plugin"
+    icon="hammer"
+    href="https://docs.asciidoctor.org/maven-tools/latest/"
+  >
+    Converts AsciiDoc sources as part of a Maven build. Also includes a Maven site module for generating project documentation sites.
+  </Card>
+  <Card
+    title="Asciidoctor Gradle Plugin"
+    icon="gear"
+    href="https://asciidoctor.github.io/asciidoctor-gradle-plugin/"
+  >
+    Converts AsciiDoc sources as part of a Gradle build. Supports all Asciidoctor backends and output formats via AsciidoctorJ.
+  </Card>
+</CardGroup>
+
+## IDE and editor integrations
+
+<CardGroup cols={2}>
+  <Card
+    title="IntelliJ AsciiDoc Plugin"
+    icon="brackets-curly"
+    href="https://intellij-asciidoc-plugin.ahus1.de/docs"
+  >
+    Adds syntax highlighting, auto-completion, structure view, and a live preview to IntelliJ IDEA, CLion, PhpStorm, RubyMine, Android Studio, and other JetBrains IDEs. Supports Antora projects and PDF generation.
+  </Card>
+  <Card
+    title="VS Code AsciiDoc Extension"
+    icon="code"
+    href="https://marketplace.visualstudio.com/items?itemName=asciidoctor.asciidoctor-vscode"
+  >
+    Rich language support for AsciiDoc in Visual Studio Code, including syntax highlighting, snippets, and a live preview panel that updates as you type.
+  </Card>
+  <Card
+    title="Eclipse Asciidoctor Editor"
+    icon="circle-dot"
+    href="https://marketplace.eclipse.org/content/asciidoctor-editor"
+  >
+    Open-source plugin for Eclipse that provides syntax highlighting, outline view, and document preview.
+  </Card>
+  <Card
+    title="AsciiDocFX"
+    icon="pen-to-square"
+    href="https://www.asciidocfx.com"
+  >
+    A standalone AsciiDoc editor built with JavaFX. Includes a live split-pane preview, PDF export, and a built-in terminal.
+  </Card>
+</CardGroup>
+
+## Web browser extensions
+
+The Asciidoctor.js live preview extensions let you open a local `.adoc` file in your browser and see it rendered as HTML — no server required.
+
+<CardGroup cols={2}>
+  <Card
+    title="Chrome Extension"
+    icon="chrome"
+    href="https://chrome.google.com/webstore/detail/asciidoctorjs-live-previe/iaalpfgpbocpdfblpnhhgllgbdbchmia"
+  >
+    Asciidoctor.js Live Preview for Google Chrome.
+  </Card>
+  <Card
+    title="Firefox Add-on"
+    icon="firefox"
+    href="https://addons.mozilla.org/en/firefox/addon/asciidoctorjs-live-preview"
+  >
+    Asciidoctor.js Live Preview for Mozilla Firefox.
+  </Card>
+  <Card
+    title="Edge Add-on"
+    icon="edge"
+    href="https://microsoftedge.microsoft.com/addons/detail/asciidoctorjs-live-previ/pefkelkanablhjdekgdahplkccnbdggd"
+  >
+    Asciidoctor.js Live Preview for Microsoft Edge.
+  </Card>
+  <Card
+    title="Opera Extension"
+    icon="square"
+    href="https://addons.opera.com/en/extensions/details/asciidoctorjs-live-preview/"
+  >
+    Asciidoctor.js Live Preview for Opera.
+  </Card>
+</CardGroup>
+
+<Note>
+  All four browser extensions are built from the same codebase and behave identically. Install whichever matches your browser.
+</Note>
+
+## Javadoc with AsciiDoc (Asciidoclet)
+
+<Card
+  title="Asciidoclet"
+  icon="java"
+  href="https://docs.asciidoctor.org/asciidoclet/latest/"
+>
+  A Javadoc doclet that lets you write Javadoc comments in AsciiDoc instead of HTML. Asciidoclet processes those comments with Asciidoctor and produces standard Javadoc output.
+</Card>
+
+## Hosted git repository rendering
+
+GitHub, GitLab, and Codeberg render `.adoc` files as HTML automatically, using Asciidoctor. You do not need to install anything. The preview is the embedded HTML output — it will be styled by the hosting platform rather than your own stylesheet, and some features such as `include::` directives may be restricted.
+
+<Tip>
+  GitLab supports a wider feature set than GitHub for AsciiDoc preview, including `include::` directives, admonition icons, diagrams, and STEM expressions.
+</Tip>
+
+## Writing your own extensions
+
+The Asciidoctor extension API allows you to add custom behavior at every stage of the conversion pipeline. Register an extension in Ruby using `Asciidoctor::Extensions.register`:
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+Asciidoctor::Extensions.register do
+  # Preprocessor runs before parsing
+  preprocessor do
+    process do |document, reader|
+      # modify reader lines before parsing
+      reader
+    end
+  end
+
+  # BlockProcessor adds a custom block macro
+  block :shout do
+    on_context :paragraph
+    process do |parent, reader, attrs|
+      lines = reader.lines.map(&:upcase)
+      create_paragraph parent, lines, attrs
+    end
+  end
+end
+
+Asciidoctor.convert_file 'document.adoc', safe: :safe
+```
+
+Extension types available:
+
+| Type | Purpose |
+|---|---|
+| `Preprocessor` | Modify raw source lines before parsing |
+| `TreeProcessor` | Walk and transform the parsed document tree |
+| `Postprocessor` | Modify the converted output string |
+| `BlockProcessor` | Define custom delimited blocks or paragraph styles |
+| `BlockMacroProcessor` | Define custom block-level macros |
+| `InlineMacroProcessor` | Define custom inline macros |
+| `IncludeProcessor` | Intercept `include::` directives |
+| `DocinfoProcessor` | Inject content into the document header or footer |
+
+See the [Extensions](/extensions/overview) section for full documentation.

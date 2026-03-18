@@ -1,0 +1,161 @@
+---
+title: "Preprocessor"
+description: "Modify AsciiDoc source lines before parsing begins using a Preprocessor extension."
+---
+
+A `Preprocessor` runs after the source text is split into lines and normalized (trailing whitespace and end-of-line characters stripped), but before the parser builds the AST. It receives the document and its `Reader`, can inspect or rewrite lines, and returns either the same `Reader` or a substitute `Reader`.
+
+## Class API
+
+```ruby
+class Asciidoctor::Extensions::Preprocessor < Asciidoctor::Extensions::Processor
+  # Override this method in your subclass.
+  #
+  # document - The Asciidoctor::Document being processed.
+  # reader   - The Asciidoctor::PreprocessorReader containing the source lines.
+  #
+  # Returns the Reader (same or a replacement), or nil/false to keep the
+  # original reader unchanged.
+  def process(document, reader)
+    raise NotImplementedError
+  end
+end
+```
+
+Key `Reader` methods available inside `process`:
+
+| Method | Description |
+|--------|-------------|
+| `reader.lines` | Returns the remaining source lines as an `Array<String>`. Mutating this array mutates what the parser sees. |
+| `reader.read_line` | Reads and returns the next line, advancing the cursor. |
+| `reader.advance` | Advances the cursor by one line without returning it. |
+| `reader.has_more_lines?` | Returns `true` if there are unread lines. |
+| `reader.push_include content, file, path, lineno, attributes` | Pushes additional content into the reader stack. |
+
+## Registration
+
+<Tabs>
+  <Tab title="Class">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      preprocessor FrontMatterPreprocessor
+    end
+    ```
+  </Tab>
+  <Tab title="Block">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      preprocessor do
+        process do |document, reader|
+          # modify reader here
+          reader
+        end
+      end
+    end
+    ```
+  </Tab>
+  <Tab title="Preferred (runs first)">
+    ```ruby
+    Asciidoctor::Extensions.register do
+      prefer :preprocessor do
+        process do |document, reader|
+          reader
+        end
+      end
+    end
+    ```
+
+    `prefer` inserts the processor at the front of the list so it runs before any others of the same type.
+  </Tab>
+</Tabs>
+
+## Example: stripping a YAML front matter block
+
+Some workflows prepend YAML front matter to AsciiDoc files. This preprocessor strips the block and stores the key-value pairs as document attributes.
+
+```ruby
+require 'asciidoctor'
+require 'asciidoctor/extensions'
+
+class FrontMatterPreprocessor < Asciidoctor::Extensions::Preprocessor
+  def process document, reader
+    lines = reader.lines
+    return reader unless lines.first&.chomp == '---'
+
+    lines.shift          # drop the opening ---
+    reader.advance
+
+    while (line = lines.shift)
+      reader.advance
+      break if line.chomp == '---'
+      key, _, value = line.partition ':'
+      document.set_attr key.strip, value.strip
+    end
+
+    reader
+  end
+end
+
+Asciidoctor::Extensions.register do
+  preprocessor FrontMatterPreprocessor
+end
+```
+
+Given the following input:
+
+```asciidoc
+---
+author: Ada Lovelace
+version: 1.0
+---
+= My Document
+
+Content here.
+```
+
+The preprocessor strips the front matter and sets `author` and `version` as document attributes before parsing begins.
+
+## Example: scrubbing lines before the document header
+
+This example (taken directly from the Asciidoctor test suite) removes any lines that appear before the first section title and stores them in a document attribute:
+
+```ruby
+class ScrubHeaderPreprocessor < Asciidoctor::Extensions::Preprocessor
+  def process document, reader
+    lines = reader.lines
+    skipped = []
+
+    while !lines.empty? && !lines.first.start_with?('=')
+      skipped << lines.shift
+      reader.advance
+    end
+
+    document.set_attr 'skipped', skipped.join("\n")
+    reader
+  end
+end
+```
+
+<Note>
+  Always return the `reader` object (or `nil`/`false` to keep the original unchanged). Returning `nil` is equivalent to returning the original reader — the document continues processing with whatever reader state was in place when `process` returned.
+</Note>
+
+## Returning a substitute reader
+
+You can return a completely different `Reader` instance — for example to inject synthesized content:
+
+```ruby
+class InjectPreamblePreprocessor < Asciidoctor::Extensions::Preprocessor
+  def process document, reader
+    preamble = [
+      'NOTE: This document was auto-generated.',
+      '',
+    ]
+    Asciidoctor::Reader.new(preamble + reader.lines)
+  end
+end
+```
+
+<Warning>
+  Constructing a new `Reader` discards cursor position information (file, line numbers). Prefer mutating `reader.lines` in place when you do not need to replace the reader entirely.
+</Warning>

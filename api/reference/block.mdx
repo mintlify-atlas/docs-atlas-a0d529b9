@@ -1,0 +1,282 @@
+---
+title: "Asciidoctor::Block"
+description: "Represents a block-level element in a parsed AsciiDoc document, such as a paragraph, listing, sidebar, or image."
+---
+
+`Asciidoctor::Block` represents a block-level element in the document AST. It inherits from `AbstractBlock`, which itself inherits from `AbstractNode`. Most content in a document (paragraphs, code listings, sidebars, images, and so on) is represented as a `Block`.
+
+Blocks are produced by the parser and accessible by walking the `blocks` array of any `AbstractBlock` node (including `Document` and `Section`), or via `AbstractBlock#find_by`.
+
+```ruby
+doc = Asciidoctor.load source, safe: :safe
+
+# All direct child blocks of the document
+doc.blocks.each do |block|
+  puts "#{block.context}: #{block.style}"
+end
+
+# Find all listing blocks
+listings = doc.find_by(context: :listing)
+```
+
+## Attributes
+
+### `context`
+
+Symbol identifying the type of block. Common values:
+
+| Value | Description |
+|-------|-------------|
+| `:paragraph` | Prose paragraph |
+| `:listing` | Code listing or source block |
+| `:literal` | Literal (verbatim) block |
+| `:sidebar` | Sidebar block |
+| `:example` | Example block |
+| `:quote` | Quote block |
+| `:verse` | Verse block |
+| `:pass` | Passthrough block |
+| `:open` | Open block (generic container) |
+| `:image` | Image block |
+| `:audio` | Audio block |
+| `:video` | Video block |
+| `:stem` | STEM (math) block |
+| `:table` | Table block |
+| `:admonition` | Note/Tip/Warning/Caution/Important block |
+| `:section` | Section (use `Asciidoctor::Section` instead) |
+
+Also aliased as `blockname` for compatibility with AsciiDoc.
+
+```ruby
+block.context  # => :paragraph
+block.blockname # => :paragraph  (alias)
+```
+
+**Type** `Symbol`.
+
+### `content_model`
+
+Describes how the block's content is interpreted. Inherited from `AbstractBlock`.
+
+| Value | Description |
+|-------|-------------|
+| `:compound` | Contains other blocks |
+| `:simple` | Prose that receives normal substitutions |
+| `:verbatim` | Displayed as-is with verbatim substitutions |
+| `:raw` | Passed to output with no substitutions |
+| `:empty` | No content (e.g., image, page break) |
+
+```ruby
+block.content_model # => :simple
+```
+
+**Type** `Symbol`.
+
+### `style`
+
+The block style qualifier as a string (e.g., `'source'`, `'NOTE'`, `'verse'`). Set by the `[style]` attribute list above the block.
+
+```ruby
+block.style # => "source"
+```
+
+**Type** `String | nil`.
+
+### `lines`
+
+The raw source lines for this block as an `Array` of strings. Applicable when `content_model` is `:simple`, `:verbatim`, or `:raw`.
+
+```ruby
+block.lines
+# => ["def hello", "  puts 'Hello, World!'", "end"]
+```
+
+**Type** `Array<String>`.
+
+### `blocks`
+
+The direct child blocks of this block. Only populated when `content_model` is `:compound`. Inherited from `AbstractBlock`.
+
+```ruby
+block.blocks.each {|child| puts child.context }
+```
+
+**Type** `Array<AbstractBlock>`.
+
+### `attributes`
+
+Hash of parsed block attributes (e.g., `id`, `role`, `language`, `linenums`). Inherited from `AbstractNode`.
+
+```ruby
+block.attributes
+# => { "language" => "ruby", "linenums" => "" }
+```
+
+**Type** `Hash`.
+
+### `id`
+
+The string anchor ID for this block, or `nil` if no ID is set.
+
+```ruby
+block.id # => "my-anchor"
+```
+
+**Type** `String | nil`.
+
+### `title`
+
+The block title string, or `nil` if not set.
+
+```ruby
+block.title # => "Example 1. A code sample"
+```
+
+**Type** `String | nil`.
+
+### `source_location`
+
+A `SourceLocation` struct with `file` and `lineno`. Only populated when `:sourcemap` is enabled.
+
+```ruby
+block.source_location.lineno # => 18
+```
+
+**Type** `SourceLocation | nil`.
+
+---
+
+## Methods
+
+### `content`
+
+Returns the converted content of this block. The behavior depends on `content_model`:
+
+- `:compound` — converts and joins child blocks
+- `:simple` — applies normal substitutions to joined lines
+- `:verbatim` / `:raw` — applies verbatim substitutions and strips leading/trailing blank lines
+- `:empty` — returns `nil`
+
+```ruby
+block.content
+```
+
+**Returns** `String | nil`.
+
+```ruby
+doc = Asciidoctor::Document.new
+block = Asciidoctor::Block.new(doc, :paragraph, source: '_This_ is a <test>')
+block.content
+# => "<em>This</em> is a &lt;test&gt;"
+```
+
+### `source`
+
+Returns the raw (pre-substitution) source of this block as a single string with lines joined by newlines.
+
+```ruby
+block.source
+```
+
+**Returns** `String`.
+
+```ruby
+block.source
+# => "def hello\n  puts 'Hello, World!'\nend"
+```
+
+### `convert`
+
+Converts this block using the document's converter and returns the output string. Inherited from `AbstractBlock`.
+
+```ruby
+block.convert
+```
+
+**Returns** `String`.
+
+### `attr`
+
+Retrieves the value of a block attribute, with optional fallback to the document. Inherited from `AbstractNode`.
+
+```ruby
+attr(name, default_value = nil, fallback_name = nil)
+```
+
+<ParamField path="name" type="String | Symbol" required>
+  Attribute name.
+</ParamField>
+
+<ParamField path="default_value" type="Object">
+  Returned when the attribute is not found.
+</ParamField>
+
+<ParamField path="fallback_name" type="String | Symbol">
+  Attribute to look up on the document if not found on this block. Pass `true` to reuse the same name.
+</ParamField>
+
+**Returns** `Object | nil`.
+
+```ruby
+block.attr 'language'            # => "ruby"
+block.attr 'language', 'text'    # => "text"  (if language not set)
+block.attr 'source-highlighter', nil, true # falls back to document attribute
+```
+
+### `attr?`
+
+Tests whether a block attribute is set. Inherited from `AbstractNode`.
+
+```ruby
+attr?(name, expected_value = nil, fallback_name = nil)
+```
+
+**Returns** `Boolean`.
+
+```ruby
+block.attr? 'linenums'  # => true
+block.attr? 'language', 'ruby' # => true (only if language == 'ruby')
+```
+
+### `find_by`
+
+Searches the block subtree and returns all matching nodes. Inherited from `AbstractBlock`.
+
+```ruby
+block.find_by(context: :paragraph)
+```
+
+**Returns** `Array<AbstractBlock>`.
+
+### `option?`
+
+Returns `true` if the named option is enabled on this block (i.e., the `<name>-option` attribute is set).
+
+```ruby
+block.option? 'autowidth' # => true
+```
+
+**Returns** `Boolean`.
+
+---
+
+## Working with blocks
+
+```ruby
+doc = Asciidoctor.load source, safe: :safe
+
+# Inspect all source code blocks
+doc.find_by(context: :listing, style: 'source').each do |block|
+  lang = block.attr 'language'
+  puts "[#{lang}] #{block.lines.count} lines"
+end
+
+# Access admonition blocks by style
+doc.find_by(context: :admonition).each do |block|
+  puts "#{block.style}: #{block.content.slice(0, 60)}"
+end
+
+# Check compound blocks for nested content
+doc.find_by(context: :sidebar).each do |sidebar|
+  puts "Sidebar has #{sidebar.blocks.count} child block(s)"
+end
+```

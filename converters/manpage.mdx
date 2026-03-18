@@ -1,0 +1,203 @@
+---
+title: "Man page converter"
+description: "Learn how to use Asciidoctor's built-in man page converter to produce groff-formatted manual pages from AsciiDoc source, including the required document structure, key attributes, and how to view and post-process the output."
+---
+
+The man page converter transforms an AsciiDoc document into a groff-formatted manual page (man page). The output adheres to the groff `man` macro set and is compatible with the `man` command on Unix-like systems.
+
+Using AsciiDoc as the source of a man page means you can convert the same document to HTML and PDF in addition to groff, making the source reusable across formats.
+
+| Property | Value |
+|---|---|
+| Backend name | `manpage` |
+| Converter class | `Asciidoctor::Converter::ManPageConverter` |
+| Output format | groff (troff) |
+| File extension | `.man` (default), or `.<manvolnum>` when derived from the doctitle |
+
+## Required document structure
+
+The man page converter requires the `manpage` **doctype**. This is distinct from the `manpage` backend. When the `manpage` doctype is active, Asciidoctor enforces a specific document structure and derives man page metadata from the header.
+
+<Warning>
+If the `doctype` is not set to `manpage`, the converter raises an error: `asciidoctor: ERROR: doctype must be set to manpage when using manpage backend`.
+</Warning>
+
+A valid man page document must contain the following sections in order:
+
+<Steps>
+  <Step title="Document header">
+    The title must be in the form `name(volnum)` — the command name followed by the manual volume number in parentheses. The title must not contain spaces. The volume number is a single digit optionally followed by a single letter.
+
+    ```asciidoc
+    = progname(1)
+    Author Name <author@example.com>
+    v1.0.0
+    :doctype: manpage
+    :manmanual: PROGNAME
+    :mansource: PROGNAME
+    ```
+
+    Asciidoctor derives the `mantitle` and `manvolnum` attributes from the doctitle automatically.
+  </Step>
+  <Step title="NAME section (required)">
+    The first body section must be titled `Name` (case-insensitive). It must contain exactly one paragraph listing the command name(s) separated from the purpose by a dash with spaces on both sides.
+
+    ```asciidoc
+    == Name
+
+    progname - does something useful
+    ```
+
+    Multiple names (for commands that share a man page) are comma-separated:
+
+    ```asciidoc
+    == Name
+
+    name1, name2 - share the same purpose
+    ```
+  </Step>
+  <Step title="SYNOPSIS section (recommended)">
+    The second section should be titled `Synopsis`. It typically uses bold for the command name and italic (underscores) for arguments.
+
+    ```asciidoc
+    == Synopsis
+
+    *progname* [_OPTION_]... _FILE_...
+    ```
+  </Step>
+  <Step title="Additional sections">
+    Subsequent sections are optional. Common sections include Description, Options, Exit status, Files, Environment, Bugs, See also, Author, and Copyright.
+
+    The converter automatically uppercases level-0 and level-1 section titles in the groff output, so you do not need to write them in all-caps in the source.
+  </Step>
+</Steps>
+
+## Complete example
+
+The following is a complete man page source for a fictional command named `eve`:
+
+```asciidoc
+= eve(1)
+Andrew Stanton
+v1.0.0
+:doctype: manpage
+:manmanual: EVE
+:mansource: EVE
+:man-linkstyle: pass:[blue R < >]
+
+== Name
+
+eve - analyzes an image to determine if it's a picture of a life form
+
+== Synopsis
+
+*eve* [_OPTION_]... _FILE_...
+
+== Options
+
+*-o, --out-file*=_OUT_FILE_::
+  Write result to file _OUT_FILE_.
+
+*-c, --capture*::
+  Capture specimen if it's a picture of a life form.
+
+== Exit status
+
+*0*::
+  Success.
+  Image is a picture of a life form.
+
+*1*::
+  Failure.
+  Image is not a picture of a life form.
+
+== Resources
+
+*Project web site:* https://eve.example.org
+
+== Copying
+
+Copyright (C) 2008 {author}. +
+Free use of this software is granted under the terms of the MIT License.
+```
+
+## Generating the man page
+
+<Tabs>
+  <Tab title="CLI">
+    ```bash
+    asciidoctor -b manpage progname.adoc
+    # Produces progname.1 (filename derived from mantitle and manvolnum)
+    ```
+  </Tab>
+  <Tab title="Ruby API">
+    ```ruby
+    require 'asciidoctor'
+
+    Asciidoctor.convert_file 'progname.adoc',
+      backend: 'manpage',
+      safe: :safe
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+The output filename is derived from the `manname` and `manvolnum` attributes, which are themselves derived from the doctitle. A document with `= eve(1)` produces the file `eve.1`.
+</Info>
+
+## Viewing the output
+
+```bash
+# View the generated man page directly
+man ./progname.1
+
+# Convert to PostScript
+man -t ./progname.1 > progname.ps
+
+# Convert to PDF via ps2pdf
+man -t ./progname.1 | ps2pdf - progname.pdf
+```
+
+You can also convert the same AsciiDoc source to HTML without changing the source:
+
+```bash
+# Produces progname.html — no backend flag means html5
+asciidoctor progname.adoc
+```
+
+## Document attributes
+
+The following attributes apply specifically to the `manpage` doctype and converter. Set them in the document header or override them on the CLI.
+
+| Attribute | Description | Derived from |
+|---|---|---|
+| `mantitle` | The command name used in the man page header. | `doctitle` |
+| `manvolnum` | The manual volume number (e.g., `1` for user commands). | `doctitle` |
+| `manname` | The command name used in the NAME section and as the output filename. Can be overridden independently. | NAME section |
+| `manpurpose` | The one-line purpose description used in the NAME section. | NAME section |
+| `mansource` | The source package or project to which the man page pertains (shown in the footer). | Set explicitly |
+| `manmanual` | The name of the manual (shown in the footer). | Set explicitly |
+| `man-linkstyle` | Link formatting sequence for URLs in groff output. | `blue R < >` (default) |
+
+### Overriding attributes from the CLI
+
+You can repurpose a man page for a different command without editing the source file:
+
+```bash
+asciidoctor -b manpage \
+  -a doctitle="othername(7)" \
+  -a manname=othername \
+  -a manpurpose="description of othername" \
+  progname.adoc
+# Produces othername.7
+```
+
+## Output filename
+
+The output filename is `<manname>.<manvolnum>`. For a document with the doctitle `progname(1)`, the output file is `progname.1`.
+
+The `outfilesuffix` attribute defaults to `.man` in the converter source, but when `mantitle` and `manvolnum` are derived from the doctitle, Asciidoctor sets the output filename to `<manname>.<manvolnum>` directly.
+
+<Tip>
+Asciidoctor's own man page (`man asciidoctor`) is generated from an AsciiDoc source file using this converter. You can use it as a real-world reference for structuring man page content.
+</Tip>
